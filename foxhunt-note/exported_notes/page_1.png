@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Page 1 - Cover</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;700;900&family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #e4e4e7; display: flex; justify-content: center; padding: 40px; }
+        .a4-page {
+            width: 250mm;
+            height: 250mm;
+            background: white;
+            padding: 10mm;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            position: relative;
+            font-family: 'Prompt', sans-serif;
+            overflow: hidden;
+        }
+        .deco-icon { position: absolute; opacity: 0.05; pointer-events: none; user-select: none; }
+    </style>
+</head>
+<body>
+
+    <!-- นี่คือโค้ดเฉพาะของ Page 1 (หน้าปก) ครับ -->
+    <div class="a4-page relative group flex flex-col items-center justify-center">
+        
+        <!-- เนื้อหาหน้าปก -->
+        <div class="flex flex-col items-center justify-center w-full h-full relative z-10">
+            <div class="text-[120px] mb-6 cursor-pointer transform hover:scale-110 transition duration-300 drop-shadow-md">🦊</div>
+            
+            <h1 class="text-6xl font-black text-black tracking-tighter mb-4 text-center w-full drop-shadow-sm">
+                Foxhunt Note
+            </h1>
+            
+            <h2 class="text-2xl text-orange-400 font-bold tracking-widest uppercase mb-12 text-center w-full">
+                The Ultimate Collection
+            </h2>
+            
+            <div class="border-t-4 border-orange-300 w-24 mb-8 rounded-full"></div>
+            
+            <div class="text-center">
+                <p class="text-sm text-black font-bold uppercase mb-1 tracking-widest">Created By</p>
+                <p class="text-xl font-black text-black">พี่จิ้งจอก</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

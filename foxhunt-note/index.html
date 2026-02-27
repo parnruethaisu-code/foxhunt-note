@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Foxhunt Master Template - Ultimate Sidebar Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลด Fonts ให้ครบตามที่ใช้งาน -->
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600&family=Mali:wght@300;400;600&family=Prompt:wght@100;300;400;500;600;700;800&family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Kanit:wght@300;400;500&family=Krub:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+            svg: { fontCache: 'global' },
+            startup: { typeset: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --midnight-moon: #1A252F; --fox-orange: #D35400; --vivid-green: #27AE60; --moonlight-yellow: #F1C40F;
+            --bg-white: #FFFFFF; --text-dark: #2C3E50; --light-gray: #F8F9FA; --trick-bg: #FCF9F5;
+            --font-heading: 'Prompt', sans-serif; --font-body: 'Sarabun', sans-serif;
+            --page-width: 250mm; --page-height: 250mm; --sidebar-width: 320px;
+        }
+
+        body { 
+            font-family: var(--font-body); background-color: #e4e4e7; margin: 0; padding: 0; color: var(--text-dark);
+            overscroll-behavior: none; touch-action: pan-y; -webkit-font-smoothing: antialiased;
+        }
+        
+        body.is-dragging { user-select: none; cursor: grabbing !important; }
+        
+        /* Hide UI during export */
+        body.is-exporting .page-controls, body.is-exporting .smart-object .controls { display: none !important; }
+
+        h1, h2, h3, h4, .font-heading, .badge, .page-num { font-family: var(--font-heading); }
+
+        /* --- WORKSPACE LAYOUT --- */
+        .top-bar { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #111827; z-index: 2000; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; color: white; border-bottom: 1px solid #374151; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        .sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: var(--sidebar-width); background: white; z-index: 1500; border-right: 1px solid #e5e7eb; overflow-y: auto; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 4px 0 15px rgba(0,0,0,0.05); }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        .main-workspace { margin-top: 60px; margin-left: var(--sidebar-width); min-height: calc(100vh - 60px); display: flex; justify-content: center; padding: 40px 20px; transition: margin 0.3s ease; }
+
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-workspace { margin-left: 0; padding: 20px 10px; }
+        }
+
+        /* --- SIDEBAR COMPONENTS --- */
+        .sb-section { padding: 20px; border-bottom: 1px solid #f3f4f6; }
+        .sb-title { font-size: 11px; font-weight: 800; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        
+        .tool-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .tool-grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
+        
+        .btn-sb { display: flex; align-items: center; gap: 8px; justify-content: flex-start; padding: 10px 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .btn-sb:hover { background: #f3f4f6; border-color: #d1d5db; color: #111827; transform: translateY(-1px); }
+        .btn-sb:active { transform: translateY(0); }
+        
+        .btn-icon { display: flex; align-items: center; justify-content: center; height: 36px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; color: #4b5563; font-size: 18px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .btn-icon:hover { background: #e5e7eb; color: #111827; border-color: #d1d5db; }
+        
+        .color-dot { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s; }
+        .color-dot:hover { transform: scale(1.15); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .styled-select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 13px; font-weight: 500; color: #374151; cursor: pointer; outline: none; transition: border 0.2s; }
+        .styled-select:focus, .styled-select:hover { border-color: #a78bfa; background-color: white; box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.1); }
+
+        .orient-btn { background: transparent; color: #6b7280; box-shadow: none; border: 1px solid transparent; }
+        .orient-btn:hover { color: #374151; }
+        .orient-btn.active { background: white; color: #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-color: white; }
+
+        /* Themed Buttons */
+        .btn-sb.t-orange { color: #c2410c; } .btn-sb.t-orange:hover { background: #fff7ed; border-color: #fed7aa; }
+        .btn-sb.t-blue { color: #1d4ed8; } .btn-sb.t-blue:hover { background: #eff6ff; border-color: #bfdbfe; }
+        .btn-sb.t-green { color: #15803d; } .btn-sb.t-green:hover { background: #f0fdf4; border-color: #bbf7d0; }
+        .btn-sb.t-red { color: #b91c1c; } .btn-sb.t-red:hover { background: #fef2f2; border-color: #fecaca; }
+        .btn-sb.t-indigo { color: #4338ca; } .btn-sb.t-indigo:hover { background: #e0e7ff; border-color: #c7d2fe; }
+
+        /* --- PAGE STYLES --- */
+        .a4-container { width: var(--page-width); display: flex; flex-direction: column; gap: 40px; transform-origin: top center; z-index: 10; position: relative; }
+        .a4-page { background: var(--bg-white); width: var(--page-width); height: var(--page-height); padding: 10mm; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15); position: relative; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; z-index: 100; break-inside: avoid; break-after: page; }
+        
+        .a4-page.margin-narrow { padding: 5mm !important; }
+        .a4-page.margin-normal { padding: 10mm !important; }
+        .a4-page.margin-wide { padding: 20mm !important; }
+        .pattern-lines { background-image: repeating-linear-gradient(transparent, transparent 31px, #e5e7eb 31px, #e5e7eb 32px); background-position: 0 0; }
+        .pattern-grid { background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px); background-size: 20px 20px; }
+        .pattern-dots { background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 20px 20px; }
+        
+        .page-separator { padding: 0 !important; }
+        .deco-icon { position: absolute; opacity: 0.08; pointer-events: none; z-index: 0; user-select: none; }
+
+        .page-header { display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-start; margin-top: 0.2cm; margin-bottom: 10px; text-align: left; border-bottom: 1px solid #cbd5e1; padding-bottom: 10px; flex-shrink: 0; position: relative; z-index: 1; }
+        .page-footer { margin-top: auto; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; text-align: center; flex-shrink: 0; z-index: 1; }
+        .page-cover { justify-content: center; align-items: center; text-align: center; border: none; }
+        
+        /* Page Controls (+/-) On Each Page */
+        .page-controls { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; opacity: 0; transition: all 0.2s ease; z-index: 200; }
+        .a4-page:hover .page-controls { opacity: 1; }
+        .add-page-btn, .remove-page-btn { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: all 0.2s; }
+        .add-page-btn { background: #dcfce7; color: #15803d; }
+        .add-page-btn:hover { background: #22c55e; color: white; transform: scale(1.1); }
+        .remove-page-btn { background: #fee2e2; color: #ef4444; }
+        .remove-page-btn:hover { background: #dc2626; color: white; transform: scale(1.1); }
+
+        [contenteditable] { outline: none; }
+        [contenteditable]:focus { background-color: rgba(59, 130, 246, 0.05); border-radius: 2px; }
+        [contenteditable]:empty:before { content: attr(placeholder); color: #9ca3af; pointer-events: none; display: block; }
+        .content-editable-area { cursor: text; min-height: 100px; position: relative; z-index: 2;}
+
+        /* --- BLOCKS --- */
+        .block-trick { background-color: #fff7ed; border: 2px solid #fed7aa; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; position: relative; z-index: 1;}
+        .block-exam { background-color: #eff6ff; border: 2px solid #bfdbfe; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; z-index: 1; position: relative;}
+        .block-def { background-color: #f8fafc; border-left: 5px solid #3b82f6; border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.5rem; z-index: 1; position: relative;}
+        .block-easy { background-color: #f0fdf4; border-left: 5px solid #22c55e; border-radius: 0.5rem; padding: 1rem; margin-bottom: 0.5rem; z-index: 1; position: relative;}
+        .block-dashed { background-color: #f9fafb; border: 2px dashed #9ca3af; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; z-index: 1; position: relative;}
+        .block-solid { background-color: #e0e7ff; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; border: none; z-index: 1; position: relative;}
+        .block-red { background-color: #fef2f2; border: 2px solid #fca5a5; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.5rem; z-index: 1; position: relative;}
+
+        .article-card { margin-bottom: 1.2rem; position: relative; z-index: 1; }
+        .article-label { font-family: 'Prompt', sans-serif; font-size: 10pt; font-weight: bold; color: #FFFFFF; background: var(--midnight-moon); padding: 5px 16px; border-radius: 2px; display: inline-block; margin-bottom: 8px; }
+        .article-text { font-size: 10pt; font-style: italic; color: #555; background: var(--light-gray); padding: 12px 18px; border-radius: 4px; border-left: 4px solid #DDD; margin-bottom: 12px; }
+        
+        .fox-explanation { font-size: 10.5pt; padding: 12px 18px; border-radius: 8px; background: #FFFDF8; border: 1px solid #FDF2D9; color: var(--text-dark); position: relative; margin-left: 5px; margin-bottom: 1rem; z-index: 1;}
+        .fox-explanation b { color: var(--fox-orange); }
+        .explanation-icon { margin-right: 10px; font-size: 12pt; }
+
+        .flowchart-section { margin: 1.5rem 0; padding: 25px; background: var(--light-gray); border-radius: 12px; text-align: center; position: relative; z-index: 1; }
+        .flow-title { font-family: 'Prompt', sans-serif; font-size: 9.5pt; font-weight: 700; color: var(--midnight-moon); margin-bottom: 25px; text-transform: uppercase; letter-spacing: 1.5px; }
+        .flow-container { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .flow-node { padding: 10px 24px; background: #FFF; border: 3px solid var(--midnight-moon); border-radius: 8px; font-family: 'Prompt', sans-serif; font-size: 10pt; font-weight: 700; color: var(--midnight-moon); box-shadow: 6px 6px 0px rgba(26, 37, 47, 0.15); }
+        .flow-node.highlight { border-color: var(--fox-orange); color: var(--fox-orange); box-shadow: 6px 6px 0px rgba(211, 84, 0, 0.2); }
+        .flow-line { width: 3px; height: 15px; background: var(--midnight-moon); }
+        .flow-split { display: flex; justify-content: center; gap: 20px; width: 100%; margin-top: 5px; flex-wrap: wrap; }
+        .flow-branch { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 80px; }
+
+        .master-tricks { background: var(--trick-bg); border-radius: 10px; margin: 1.5rem 0; padding: 20px; border: 3px solid var(--midnight-moon); position: relative; z-index: 1; }
+        .trick-header { font-family: 'Prompt', sans-serif; color: var(--midnight-moon); font-size: 13pt; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .trick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 8.5pt; }
+        .trick-item { display: flex; flex-direction: column; padding: 12px 10px; background: #FFFFFF; border: 2.5px solid var(--midnight-moon); border-radius: 8px; box-shadow: 4px 4px 0px var(--fox-orange); }
+        .trick-item b { color: var(--fox-orange); font-family: 'Prompt', sans-serif; font-size: 9.5pt; margin-bottom: 5px; display: block; }
+
+        .quiz-section { margin-top: 1.5rem; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+        .quiz-card { border: 1.5px solid #EEE; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: #FFF; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .quiz-q { font-weight: bold; font-size: 10.5pt; color: var(--midnight-moon); margin-bottom: 12px; display: block; }
+        .quiz-opt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 9.5pt; margin-bottom: 15px; }
+        .opt-item { background: var(--light-gray); border: 1px solid #E0E0E0; padding: 10px 14px; border-radius: 4px; }
+        .quiz-ans-box { margin-top: 10px; font-size: 9.5pt; color: #FFFFFF; background: var(--midnight-moon); font-weight: 500; border-radius: 4px; padding: 12px 15px; line-height: 1.5; border: 2px solid var(--moonlight-yellow); display: none; animation: fadeIn 0.3s ease-in-out; }
+        .quiz-ans-box b { color: var(--moonlight-yellow); }
+        .show-ans-btn { background: var(--fox-orange); color: white; border: none; padding: 8px 16px; border-radius: 30px; font-family: 'Prompt', sans-serif; font-size: 9pt; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(211, 84, 0, 0.3); transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+        .show-ans-btn:hover { background: #E67E22; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(211, 84, 0, 0.4); }
+
+        .summary-box { background: #FFFFFF; border: 3px solid var(--midnight-moon); border-radius: 12px; padding: 25px; margin-top: 1.5rem; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+        .summary-title { font-family: 'Prompt', sans-serif; font-weight: bold; font-size: 13pt; color: var(--midnight-moon); margin-bottom: 18px; border-bottom: 3px solid var(--fox-orange); display: inline-block; padding-bottom: 5px; }
+        .summary-point { font-size: 10pt; margin-bottom: 8px; display: flex; gap: 12px; }
+        .summary-point b { color: var(--fox-orange); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .layout-col { border: 1px dashed #cbd5e1; border-radius: 4px; padding: 8px; min-height: 40px; transition: all 0.2s; }
+        .layout-col:hover { border-color: #94a3b8; background-color: rgba(241, 245, 249, 0.5); }
+
+        /* --- SMART OBJECTS --- */
+        .smart-object { position: absolute; cursor: grab; z-index: 500; user-select: none; display: inline-block; touch-action: none; }
+        .smart-object:active { cursor: grabbing; z-index: 600; }
+        .smart-object.is-moving { z-index: 999 !important; }
+        .smart-object:hover { outline: 1px dashed #cbd5e1; }
+        .smart-object.selected { z-index: 550; }
+        .smart-object.selected .controls { display: block; }
+        .smart-object img { pointer-events: none; } 
+        .controls { display: none; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border: 2px dashed #3b82f6; pointer-events: none; }
+        .resize-handle { position: absolute; bottom: -8px; right: -8px; width: 24px; height: 24px; background: #3b82f6; border: 2px solid white; border-radius: 50%; cursor: nwse-resize; pointer-events: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.2); touch-action: none; }
+        .delete-handle { position: absolute; top: -12px; right: -12px; width: 24px; height: 24px; background: #ef4444; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); touch-action: none; }
+
+        /* --- MODALS & DIALOGS --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 6000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 24px; border-radius: 16px; width: 600px; max-width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.3); transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        #custom-dialog { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .dialog-box { background: white; padding: 24px; border-radius: 16px; width: 400px; max-width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); text-align: center; }
+        .dialog-msg { margin-bottom: 20px; font-size: 16px; color: #374151; }
+
+        /* Ultimate Emoji Picker */
+        #emoji-picker { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); border-radius: 20px; padding: 16px; z-index: 5200; width: 420px; max-width: 90vw; height: 65vh; max-height: 600px; flex-direction: column; }
+        .emoji-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid #f3f4f6; flex-shrink: 0; }
+        .emoji-scroll-area { overflow-y: auto; flex-grow: 1; padding-right: 8px; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; }
+        .emoji-category { grid-column: 1 / -1; font-size: 12px; font-family: 'Prompt', sans-serif; font-weight: 700; color: #4b5563; background: rgba(243, 244, 246, 0.95); backdrop-filter: blur(5px); padding: 6px 10px; border-radius: 6px; margin: 16px 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.02); border: 1px solid #e5e7eb;}
+        .emoji-category:first-child { margin-top: 0; }
+        .emoji-btn { font-size: 1.8rem; padding: 4px; cursor: pointer; border-radius: 12px; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; user-select: none; display: flex; align-items: center; justify-content: center; height: 46px;}
+        .emoji-btn:hover { background-color: white; transform: scale(1.3); box-shadow: 0 6px 16px rgba(0,0,0,0.12); z-index: 10; position: relative; border: 1px solid #f3f4f6; }
+
+        #auto-save-toast { position: fixed; top: 80px; right: 20px; background: rgba(0, 0, 0, 0.8); color: white; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 7000; opacity: 0; transition: opacity 0.3s; pointer-events: none; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+        /* Print Settings */
+        @media print {
+            body { background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            ::-webkit-scrollbar { display: none; }
+            .top-bar, .sidebar, .zoom-controls { display: none !important; }
+            .main-workspace { margin-left: 0 !important; margin-top: 0 !important; padding: 0 !important; }
+            .a4-container { margin: 0; width: 100%; gap: 0; transform: none !important; }
+            .a4-page { margin: 0; box-shadow: none; page-break-after: always; border: none !important; break-inside: avoid; overflow: visible !important;}
+            .page-separator { padding: 0 !important; }
+            .no-print, .page-controls, #json-modal, .smart-object .controls, #emoji-picker, #settings-modal, #auto-save-toast, #custom-dialog { display: none !important; }
+            [contenteditable]:empty:before { display: none !important; }
+            .page-cover { border: none !important; } 
+            .layout-col { border: none !important; padding: 0 !important; }
+            .show-ans-btn { display: none !important; } 
+            .quiz-ans-box { display: block !important; border: 1px solid #000 !important; color: #000; background: none !important; }
+            .quiz-ans-box b { color: #000; }
+            .deco-icon { display: none !important; }
+        }
+    </style>
+</head>
+<body class="antialiased" onclick="handleBodyClick(event)" onkeydown="handleGlobalKey(event)">
+
+    <!-- Hidden Inputs -->
+    <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+    <input type="file" id="file-import" accept=".json,.fox" class="hidden" onchange="importProject(event)">
+
+    <!-- Auto Save Toast -->
+    <div id="auto-save-toast"><i class="ph ph-check-circle text-green-400"></i> Auto-saved</div>
+
+    <!-- Zoom Controls -->
+    <div class="zoom-controls fixed bottom-6 right-6 bg-white border border-gray-200 shadow-xl rounded-full px-2 py-1.5 flex items-center gap-1 z-[2000] no-print">
+        <button onclick="zoomOut()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition" title="ย่อหน้าจอ"><i class="ph ph-minus font-bold"></i></button>
+        <span id="zoom-display" class="text-xs font-bold text-gray-600 w-12 text-center cursor-pointer select-none hover:text-indigo-600 transition" onclick="fitZoom()" title="คลิกเพื่อปรับให้พอดีจอ">Auto</span>
+        <button onclick="zoomIn()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 transition" title="ขยายหน้าจอ"><i class="ph ph-plus font-bold"></i></button>
+    </div>
+
+    <!-- Custom Dialog -->
+    <div id="custom-dialog">
+        <div class="dialog-box">
+            <h3 id="dialog-title" class="text-xl font-bold mb-2 flex justify-center items-center gap-2"><i class="ph ph-warning-circle text-orange-500"></i> แจ้งเตือน</h3>
+            <div id="dialog-msg" class="dialog-msg">ข้อความ</div>
+            <div class="flex justify-center gap-3">
+                <button id="dialog-btn-cancel" class="px-4 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition hidden">ยกเลิก</button>
+                <button id="dialog-btn-ok" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="json-modal" class="modal-overlay" onclick="if(event.target === this) closeModal('json-modal')">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="ph ph-magic-wand text-indigo-600"></i> Smart Import (Pro)</h3>
+            <p class="text-sm text-gray-500 mb-2">วางข้อความบทเรียนยาวๆ เพื่อให้ระบบจัดหน้าให้อัตโนมัติ (รองรับ JSON)</p>
+            <textarea id="json-input" class="w-full h-64 p-3 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none resize-none mb-4" placeholder="Ex: นิยาม: แรง คือ... ทริก: จำว่า..."></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('json-modal')" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">ยกเลิก</button>
+                <button onclick="processSmartImport()" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition shadow-lg flex items-center gap-2"><i class="ph ph-lightning"></i> สร้างทันที</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Infographic Modal -->
+    <div id="ai-modal" class="modal-overlay" onclick="if(event.target === this) closeModal('ai-modal')">
+        <div class="modal-content border-t-4 border-orange-500">
+            <h3 class="text-xl font-bold mb-2 flex items-center gap-2 text-orange-700"><i class="ph ph-sparkle"></i> AI Infographic Generator</h3>
+            <p class="text-sm text-gray-500 mb-4">วางเนื้อหา, สรุป, หรือบทความยาวๆ ลงที่นี่ AI จะออกแบบและจัดหน้าเป็น Infographic ให้ทันที 🤖</p>
+            <textarea id="ai-input" class="w-full h-64 p-3 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none resize-none mb-4" placeholder="บรรทัด 1: หัวข้อหลัก&#10;บรรทัด 2: คำอธิบายย่อย&#10;บรรทัดต่อๆ ไป: ประเด็นสำคัญ..."></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('ai-modal')" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">ยกเลิก</button>
+                <button onclick="processAIGenerate()" class="px-6 py-2 bg-gradient-to-r from-orange-600 to-yellow-500 text-white font-bold rounded-lg hover:from-orange-700 hover:to-yellow-600 transition shadow-lg flex items-center gap-2"><i class="ph ph-magic-wand"></i> เสกหน้า Infographic</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay" onclick="if(event.target === this) closeModal('settings-modal')">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="ph ph-gear text-gray-700"></i> ตั้งค่าคีย์เวิร์ด (Custom Keywords)</h3>
+            <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                <div><label class="text-xs font-bold text-orange-600 block mb-1">🦊 Fox Trick</label><input type="text" id="kw-trick" class="w-full p-2 border rounded text-sm outline-none focus:border-orange-500" value="ทริก,สูตร,เคล็ดลับ,Trick,Tip,Note,จำ,ผีจิ้งจอก,ทริกผีจิ้งจอก"></div>
+                <div><label class="text-xs font-bold text-blue-600 block mb-1">🎯 Exam Drill</label><input type="text" id="kw-exam" class="w-full p-2 border rounded text-sm outline-none focus:border-blue-500" value="โจทย์,ตัวอย่าง,Ex,Example,Q:,Question,ข้อสอบ,ล็อคเป้า"></div>
+                <div><label class="text-xs font-bold text-slate-600 block mb-1">🎓 Definition</label><input type="text" id="kw-def" class="w-full p-2 border rounded text-sm outline-none focus:border-slate-500" value="นิยาม,ความหมาย,คือ,Def,Definition"></div>
+                <div><label class="text-xs font-bold text-green-600 block mb-1">🟢 Super Easy</label><input type="text" id="kw-easy" class="w-full p-2 border rounded text-sm outline-none focus:border-green-500" value="ง่ายๆ,สรุป,Easy,Simple,เหยื่อ,เหยื่ออันโอชะ"></div>
+                <div><label class="text-xs font-bold text-gray-500 block mb-1">✂️ Dashed Note</label><input type="text" id="kw-dashed" class="w-full p-2 border rounded text-sm outline-none focus:border-gray-500" value="บันทึก,จด,Note,Memo,เพิ่มเติม"></div>
+                <div><label class="text-xs font-bold text-indigo-800 block mb-1">🎨 Solid Box</label><input type="text" id="kw-solid" class="w-full p-2 border rounded text-sm outline-none focus:border-indigo-500" value="คอนเซปต์,หลักการ,Concept,Key"></div>
+                <div><label class="text-xs font-bold text-red-700 block mb-1">🚨 Red Alert</label><input type="text" id="kw-red" class="w-full p-2 border rounded text-sm outline-none focus:border-red-500" value="ระวัง,เตือน,Warning,Alert,ผิดบ่อย,ห้าม"></div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
+                <button onclick="closeModal('settings-modal')" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">ปิด</button>
+                <button onclick="saveKeywords()" class="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-900 transition shadow-lg">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ultimate Emoji Picker -->
+    <div id="emoji-picker" class="no-print" onclick="event.stopPropagation();">
+        <div class="emoji-header">
+            <span class="text-sm font-bold text-gray-700 flex items-center gap-2"><i class="ph ph-smiley text-2xl text-yellow-500"></i> Sticker Library</span>
+            <button onclick="document.getElementById('emoji-picker').style.display='none'" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition"><i class="ph ph-x font-bold text-lg"></i></button>
+        </div>
+        <div class="emoji-scroll-area"><div class="emoji-grid" id="emoji-grid"></div></div>
+    </div>
+
+    <!-- ================= TOP BAR ================= -->
+    <nav class="top-bar no-print">
+        <div class="flex items-center gap-3">
+            <!-- Mobile Menu Toggle -->
+            <button onclick="toggleSidebar(event)" class="lg:hidden text-2xl text-gray-300 hover:text-white transition"><i class="ph ph-list"></i></button>
+            <span class="text-2xl bg-gray-800 p-1.5 rounded-lg select-none hidden sm:block">🦊</span>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight leading-none">Foxhunt <span id="paper-display" class="text-gray-400 font-normal text-sm">(1:1)</span></h1>
+                <p class="text-[10px] text-gray-400 italic hidden sm:block">Alpha Protocol Edition</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-1 sm:gap-2">
+            <!-- History -->
+            <button onclick="undo()" class="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition" title="Undo (Ctrl+Z)"><i class="ph ph-arrow-u-up-left text-xl"></i></button>
+            <button onclick="redo()" class="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition" title="Redo (Ctrl+Y)"><i class="ph ph-arrow-u-up-right text-xl"></i></button>
+            
+            <div class="w-px h-6 bg-gray-700 mx-1"></div>
+            
+            <!-- Export / Save -->
+            <button onclick="openModal('json-modal')" class="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-gray-800 rounded-lg transition" title="Smart Import"><i class="ph ph-magic-wand text-xl"></i></button>
+            <button onclick="exportProject()" class="p-2 text-green-400 hover:text-green-300 hover:bg-gray-800 rounded-lg transition" title="Save Project (.fox)"><i class="ph ph-floppy-disk text-xl"></i></button>
+            
+            <div class="w-px h-6 bg-gray-700 mx-1 hidden sm:block"></div>
+            
+            <button onclick="exportToPNG()" class="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm font-semibold rounded transition"><i class="ph ph-image text-purple-400"></i> PNG</button>
+            <button onclick="exportToPDF()" class="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm font-semibold rounded transition"><i class="ph ph-file-pdf text-red-400"></i> PDF</button>
+            <button onclick="window.print()" class="hidden sm:flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-sm font-semibold rounded transition"><i class="ph ph-printer text-gray-300"></i> Print</button>
+            
+            <button onclick="openModal('settings-modal')" class="p-2 ml-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition" title="Settings"><i class="ph ph-gear text-xl"></i></button>
+        </div>
+    </nav>
+
+    <!-- ================= LEFT SIDEBAR ================= -->
+    <aside id="sidebar" class="sidebar no-print">
+        
+        <!-- Section: AI Auto-Generate -->
+        <div class="sb-section bg-gradient-to-br from-orange-50 to-yellow-50 border-b border-orange-100">
+            <h3 class="sb-title text-orange-800"><i class="ph ph-sparkle text-lg"></i> AI Magic</h3>
+            <button onmousedown="event.preventDefault(); openModal('ai-modal')" class="btn-sb w-full justify-center bg-orange-600 text-white border-orange-700 hover:bg-orange-700 hover:border-orange-800 shadow-md transition-all">
+                <i class="ph ph-magic-wand text-lg"></i> สร้าง Infographic อัตโนมัติ
+            </button>
+        </div>
+
+        <!-- Section: จัดการหน้ากระดาษ -->
+        <div class="sb-section">
+            <h3 class="sb-title"><i class="ph ph-files text-lg"></i> จัดการหน้า (Page & Layout)</h3>
+            
+            <!-- Quick Add/Remove Page -->
+            <div class="flex gap-2 mb-3">
+                <button onmousedown="event.preventDefault(); addPage('content')" class="btn-sb bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 flex-1 justify-center py-2 shadow-sm transition-all"><i class="ph ph-file-plus text-lg"></i> เพิ่มหน้า</button>
+                <button onmousedown="event.preventDefault(); removeVisiblePage()" class="btn-sb bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300 flex-1 justify-center py-2 shadow-sm transition-all"><i class="ph ph-file-minus text-lg"></i> ลบหน้า</button>
+            </div>
+
+            <select id="paper-select" class="styled-select mb-2" onchange="setPaperSize(this.value)">
+                <option value="square">ขนาด: Square 1:1 (250x250mm)</option>
+                <option value="a4">ขนาด: A4 (210x297mm)</option>
+                <option value="a5">ขนาด: A5 (148x210mm)</option>
+                <option value="b5">ขนาด: B5 (176x250mm)</option>
+                <option value="letter">ขนาด: Letter (8.5x11")</option>
+            </select>
+            
+            <div class="flex gap-1 mb-3 bg-gray-100 p-1 rounded-lg border border-gray-200">
+                <button id="btn-portrait" onclick="setOrientation('portrait')" class="orient-btn active flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-1"><i class="ph ph-file-text text-base"></i> แนวตั้ง</button>
+                <button id="btn-landscape" onclick="setOrientation('landscape')" class="orient-btn flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex justify-center items-center gap-1"><i class="ph ph-file-text text-base" style="transform: rotate(-90deg);"></i> แนวนอน</button>
+            </div>
+            
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">ชุดดั้งเดิม (Original)</p>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onmousedown="event.preventDefault(); addPage('cover')" class="btn-sb t-indigo text-[11px] py-1.5 px-2"><i class="ph ph-book-bookmark text-sm"></i> หน้าปก</button>
+                <button onmousedown="event.preventDefault(); addPage('preface')" class="btn-sb t-red text-[11px] py-1.5 px-2"><i class="ph ph-quotes text-sm"></i> คำนำ</button>
+                <button onmousedown="event.preventDefault(); addPage('content')" class="btn-sb t-blue text-[11px] py-1.5 px-2"><i class="ph ph-note-pencil text-sm"></i> เนื้อหา</button>
+                <button onmousedown="event.preventDefault(); addPage('exam_page')" class="btn-sb text-pink-600 hover:bg-pink-50 text-[11px] py-1.5 px-2" style="border-color: #fbcfe8;"><i class="ph ph-target text-sm"></i> ข้อสอบ</button>
+                <button onmousedown="event.preventDefault(); addPage('blank')" class="btn-sb t-green text-[11px] py-1.5 px-2"><i class="ph ph-file text-sm"></i> หน้าเปล่า</button>
+                <button onmousedown="event.preventDefault(); addPage('separator')" class="btn-sb t-orange text-[11px] py-1.5 px-2"><i class="ph ph-bookmark-simple text-sm"></i> หน้าคั่น</button>
+                <button onmousedown="event.preventDefault(); addPage('last')" class="btn-sb text-gray-600 text-[11px] py-1.5 px-2 col-span-2 justify-center"><i class="ph ph-ghost text-sm"></i> หน้าผี</button>
+            </div>
+
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2">ชุดมินิมอล (Minimal)</p>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onmousedown="event.preventDefault(); addPage('cover_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-book-open text-sm"></i> หน้าปก</button>
+                <button onmousedown="event.preventDefault(); addPage('preface_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-quotes text-sm"></i> คำนำ</button>
+                <button onmousedown="event.preventDefault(); addPage('content_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-note-pencil text-sm"></i> เนื้อหา</button>
+                <button onmousedown="event.preventDefault(); addPage('exam_page_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-target text-sm"></i> ข้อสอบ</button>
+                <button onmousedown="event.preventDefault(); addPage('blank_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-file text-sm"></i> หน้าเปล่า</button>
+                <button onmousedown="event.preventDefault(); addPage('separator_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2"><i class="ph ph-bookmark-simple text-sm"></i> หน้าคั่น</button>
+                <button onmousedown="event.preventDefault(); addPage('last_minimal')" class="btn-sb text-gray-600 bg-white border-gray-200 hover:border-gray-400 text-[11px] py-1.5 px-2 col-span-2 justify-center"><i class="ph ph-check-circle text-sm"></i> หน้าสุดท้าย</button>
+            </div>
+
+            <p class="text-[10px] text-blue-400 font-bold uppercase tracking-wider mb-2 mt-4">ชุดโต้รุ่ง (Night Mode) 🌙</p>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onmousedown="event.preventDefault(); addPage('cover_night')" class="btn-sb text-gray-300 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-book-open text-sm"></i> หน้าปก</button>
+                <button onmousedown="event.preventDefault(); addPage('preface_night')" class="btn-sb text-gray-300 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-quotes text-sm"></i> คำนำ</button>
+                <button onmousedown="event.preventDefault(); addPage('content_night')" class="btn-sb text-gray-300 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-note-pencil text-sm"></i> เนื้อหา</button>
+                <button onmousedown="event.preventDefault(); addPage('exam_page_night')" class="btn-sb text-orange-400 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-target text-sm"></i> ข้อสอบ</button>
+                <button onmousedown="event.preventDefault(); addPage('blank_night')" class="btn-sb text-gray-300 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-file text-sm"></i> หน้าเปล่า</button>
+                <button onmousedown="event.preventDefault(); addPage('separator_night')" class="btn-sb text-orange-400 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2"><i class="ph ph-bookmark-simple text-sm"></i> หน้าคั่น</button>
+                <button onmousedown="event.preventDefault(); addPage('last_night')" class="btn-sb text-gray-300 bg-gray-800 border-gray-700 hover:border-gray-500 hover:bg-gray-700 text-[11px] py-1.5 px-2 col-span-2 justify-center"><i class="ph ph-ghost text-sm"></i> หน้าผี</button>
+            </div>
+
+            <p class="text-[10px] text-orange-600 font-bold uppercase tracking-wider mb-2 mt-4">ชุดสมุดจด (Notebook) 📓</p>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onmousedown="event.preventDefault(); addPage('cover_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-book-open text-sm"></i> หน้าปก</button>
+                <button onmousedown="event.preventDefault(); addPage('preface_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-quotes text-sm"></i> คำนำ</button>
+                <button onmousedown="event.preventDefault(); addPage('content_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-note-pencil text-sm"></i> เนื้อหา</button>
+                <button onmousedown="event.preventDefault(); addPage('exam_page_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-target text-sm"></i> ข้อสอบ</button>
+                <button onmousedown="event.preventDefault(); addPage('blank_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-file text-sm"></i> หน้าเปล่า</button>
+                <button onmousedown="event.preventDefault(); addPage('separator_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2"><i class="ph ph-bookmark-simple text-sm"></i> หน้าคั่น</button>
+                <button onmousedown="event.preventDefault(); addPage('last_note')" class="btn-sb text-orange-800 bg-orange-50 border-orange-200 hover:border-orange-400 text-[11px] py-1.5 px-2 col-span-2 justify-center"><i class="ph ph-check-square-offset text-sm"></i> หน้าสุดท้าย</button>
+            </div>
+
+            <p class="text-[10px] text-gray-400 mb-1">แบ่งคอลัมน์เลย์เอาต์</p>
+            <div class="tool-grid-2">
+                <button onmousedown="event.preventDefault(); insertLayout('100')" class="btn-sb text-xs py-2"><i class="ph ph-square text-base"></i> 1 คอลัมน์</button>
+                <button onmousedown="event.preventDefault(); insertLayout('50-50')" class="btn-sb text-xs py-2"><i class="ph ph-columns text-base"></i> 2 คอลัมน์</button>
+                <button onmousedown="event.preventDefault(); insertLayout('30-70')" class="btn-sb text-xs py-2"><i class="ph ph-sidebar-simple text-base"></i> 30/70</button>
+                <button onmousedown="event.preventDefault(); insertLayout('70-30')" class="btn-sb text-xs py-2"><i class="ph ph-sidebar-simple ph-flip-horizontal text-base"></i> 70/30</button>
+            </div>
+            
+            <p class="text-[10px] text-gray-400 mb-1 mt-3">ลายกระดาษ (Pattern)</p>
+            <div class="tool-grid-2 mb-3">
+                <button onmousedown="event.preventDefault(); setPagePattern('blank')" class="btn-sb text-xs py-2"><i class="ph ph-square text-base"></i> กระดาษเปล่า</button>
+                <button onmousedown="event.preventDefault(); setPagePattern('lines')" class="btn-sb text-xs py-2"><i class="ph ph-rows text-base"></i> เส้นบรรทัด</button>
+                <button onmousedown="event.preventDefault(); setPagePattern('grid')" class="btn-sb text-xs py-2"><i class="ph ph-grid-four text-base"></i> ตาราง</button>
+                <button onmousedown="event.preventDefault(); setPagePattern('dots')" class="btn-sb text-xs py-2"><i class="ph ph-dots-nine text-base"></i> ลายจุด</button>
+            </div>
+
+            <p class="text-[10px] text-gray-400 mb-1">ระยะขอบ (Margin)</p>
+            <select id="margin-select" class="styled-select" onchange="setPageMargin(this.value)">
+                <option value="normal">ขอบปกติ (10mm)</option>
+                <option value="narrow">ขอบแคบ (5mm)</option>
+                <option value="wide">ขอบกว้าง (20mm)</option>
+            </select>
+        </div>
+
+        <!-- Section: รูปแบบข้อความ -->
+        <div class="sb-section bg-gray-50/50">
+            <h3 class="sb-title"><i class="ph ph-text-t text-lg"></i> รูปแบบข้อความ (Text)</h3>
+            
+            <div class="flex gap-2 mb-2">
+                <select class="styled-select flex-1" id="fontNameSelect">
+                    <option value="Sarabun">Sarabun (ทางการ)</option>
+                    <option value="Prompt">Prompt (โมเดิร์น)</option>
+                    <option value="Kanit">Kanit (คณิต)</option>
+                    <option value="Chakra Petch">Chakra Petch (เหลี่ยม)</option>
+                    <option value="Mali">Mali (มะลิ)</option>
+                    <option value="Krub">Krub (ครับ)</option>
+                </select>
+                <select class="styled-select w-20 text-center" id="fontSizeSelect">
+                    <option value="2">เล็ก</option>
+                    <option value="3" selected>ปกติ</option>
+                    <option value="4">กลาง</option>
+                    <option value="5">ใหญ่</option>
+                    <option value="6">ยักษ์</option>
+                </select>
+            </div>
+
+            <div class="tool-grid-auto mb-3">
+                <button onmousedown="event.preventDefault(); formatDoc('bold')" class="btn-icon font-bold">B</button>
+                <button onmousedown="event.preventDefault(); formatDoc('italic')" class="btn-icon italic font-serif">I</button>
+                <button onmousedown="event.preventDefault(); formatDoc('underline')" class="btn-icon underline">U</button>
+                <button onmousedown="event.preventDefault(); formatDoc('justifyLeft')" class="btn-icon"><i class="ph ph-text-align-left"></i></button>
+                <button onmousedown="event.preventDefault(); formatDoc('justifyCenter')" class="btn-icon"><i class="ph ph-text-align-center"></i></button>
+                <button onmousedown="event.preventDefault(); formatDoc('insertUnorderedList')" class="btn-icon"><i class="ph ph-list-bullets"></i></button>
+            </div>
+            
+            <p class="text-[10px] text-gray-400 mb-1">สีข้อความ 🦊</p>
+            <div class="flex gap-2 mb-3 px-1">
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#1A252F')" class="color-dot bg-[#1A252F]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#D35400')" class="color-dot bg-[#D35400]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#27AE60')" class="color-dot bg-[#27AE60]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#F1C40F')" class="color-dot bg-[#F1C40F]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#2C3E50')" class="color-dot bg-[#2C3E50]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('foreColor', '#FFFFFF')" class="color-dot bg-[#FFFFFF]"></div>
+            </div>
+
+            <p class="text-[10px] text-gray-400 mb-1">ปากกาเน้นข้อความ</p>
+            <div class="flex gap-2 mb-3 px-1">
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#fef08a')" class="color-dot bg-[#fef08a]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#bbf7d0')" class="color-dot bg-[#bbf7d0]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#bfdbfe')" class="color-dot bg-[#bfdbfe]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#fbcfe8')" class="color-dot bg-[#fbcfe8]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#e9d5ff')" class="color-dot bg-[#e9d5ff]"></div>
+                <div onmousedown="event.preventDefault(); formatDoc('hiliteColor', '#fed7aa')" class="color-dot bg-[#fed7aa]"></div>
+            </div>
+            
+            <button onmousedown="event.preventDefault(); formatDoc('removeFormat')" class="btn-sb w-full justify-center text-red-500 border-red-100 hover:bg-red-50">
+                <i class="ph ph-eraser text-lg"></i> ล้างรูปแบบ (Clear Format)
+            </button>
+        </div>
+
+        <!-- Section: สื่อและวัตถุ -->
+        <div class="sb-section">
+            <h3 class="sb-title"><i class="ph ph-image text-lg"></i> สื่อ (Media & Tools)</h3>
+            <div class="flex flex-col gap-2 mb-3">
+                <button onmousedown="event.preventDefault(); triggerImageUpload()" class="btn-sb t-green"><i class="ph ph-upload text-lg"></i> อัปโหลดรูปภาพ (Image)</button>
+                <button onmousedown="event.preventDefault(); toggleEmojiPicker(event)" class="btn-sb t-orange relative overflow-hidden group">
+                    <span class="absolute inset-0 w-full h-full bg-orange-100 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
+                    <i class="ph ph-smiley text-lg relative z-10"></i> 
+                    <span class="relative z-10 font-bold">คลังสติกเกอร์ (400+)</span>
+                </button>
+                <button onmousedown="event.preventDefault(); insertMath()" class="btn-sb t-indigo"><i class="ph ph-function text-lg"></i> สมการคณิต (MathJax)</button>
+            </div>
+            <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p class="text-[10px] font-bold text-gray-500 mb-2 uppercase">ปรับขนาดรูป/สติกเกอร์ (เลือกก่อน)</p>
+                <input type="range" min="10" max="150" value="25" class="w-full cursor-pointer accent-indigo-500" oninput="resizeSelectedImagePreview(this.value)" onchange="resizeSelectedImageEnd(this.value)">
+            </div>
+        </div>
+
+        <!-- Section: กล่องข้อความ Premium -->
+        <div class="sb-section bg-indigo-50/30">
+            <h3 class="sb-title text-indigo-700"><i class="ph ph-star text-lg"></i> Alpha Premium Blocks</h3>
+            <div class="flex flex-col gap-2">
+                <button onmousedown="event.preventDefault(); insertBlock('article')" class="btn-sb bg-white"><span class="text-xl w-6">📖</span> <div class="text-left leading-tight"><span class="block">Article Box</span><span class="block text-[10px] font-normal text-gray-500">กล่องอ้างอิงมาตรา/หัวข้อ</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('fox-exp')" class="btn-sb bg-white t-orange"><span class="text-xl w-6">🐾</span> <div class="text-left leading-tight"><span class="block">Fox Explain</span><span class="block text-[10px] font-normal text-gray-500">จิ้งจอกอธิบายเสริม</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('mastertricks')" class="btn-sb bg-white t-indigo"><span class="text-xl w-6">✨</span> <div class="text-left leading-tight"><span class="block">Master Tricks</span><span class="block text-[10px] font-normal text-gray-500">รวมเทคนิคจำแบบ 2 คอลัมน์</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('quiz')" class="btn-sb bg-white t-red"><span class="text-xl w-6">⚔️</span> <div class="text-left leading-tight"><span class="block">Interactive Quiz</span><span class="block text-[10px] font-normal text-gray-500">ข้อสอบพร้อมปุ่มกดดูเฉลย</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('summary')" class="btn-sb bg-white t-green"><span class="text-xl w-6">📝</span> <div class="text-left leading-tight"><span class="block">Summary Box</span><span class="block text-[10px] font-normal text-gray-500">กล่องสรุปประเด็นหลัก</span></div></button>
+                
+                <!-- New Premium Blocks -->
+                <button onmousedown="event.preventDefault(); insertBlock('timeline')" class="btn-sb bg-white t-blue"><span class="text-xl w-6">⏳</span> <div class="text-left leading-tight"><span class="block">Timeline / Steps</span><span class="block text-[10px] font-normal text-gray-500">เส้นเวลา หรือ ลำดับขั้นตอน</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('compare')" class="btn-sb bg-white text-gray-700"><span class="text-xl w-6">⚖️</span> <div class="text-left leading-tight"><span class="block">Compare (VS)</span><span class="block text-[10px] font-normal text-gray-500">ตารางเปรียบเทียบ 2 ฝั่ง</span></div></button>
+                <button onmousedown="event.preventDefault(); insertBlock('checklist')" class="btn-sb bg-white t-green"><span class="text-xl w-6">☑️</span> <div class="text-left leading-tight"><span class="block">To-Do / Checklist</span><span class="block text-[10px] font-normal text-gray-500">รายการสิ่งที่ต้องจำ/เช็คลิสต์</span></div></button>
+            </div>
+        </div>
+
+        <!-- Section: กล่องข้อความ Basic -->
+        <div class="sb-section pb-20">
+            <h3 class="sb-title"><i class="ph ph-cube text-lg"></i> Basic Blocks</h3>
+            <div class="tool-grid-2">
+                <button onmousedown="event.preventDefault(); insertBlock('trick')" class="btn-sb t-orange text-xs py-2"><span class="text-lg">🦊</span> Trick</button>
+                <button onmousedown="event.preventDefault(); insertBlock('exam')" class="btn-sb t-blue text-xs py-2"><span class="text-lg">🎯</span> Exam</button>
+                <button onmousedown="event.preventDefault(); insertBlock('def')" class="btn-sb t-indigo text-xs py-2"><span class="text-lg">🎓</span> Definition</button>
+                <button onmousedown="event.preventDefault(); insertBlock('easy')" class="btn-sb t-green text-xs py-2"><span class="text-lg">🟢</span> Easy</button>
+                <button onmousedown="event.preventDefault(); insertBlock('dashed')" class="btn-sb text-gray-600 text-xs py-2"><span class="text-lg">✂️</span> Note</button>
+                <button onmousedown="event.preventDefault(); insertBlock('solid')" class="btn-sb t-indigo text-xs py-2"><span class="text-lg">🎨</span> Concept</button>
+                <button onmousedown="event.preventDefault(); insertBlock('red')" class="btn-sb t-red text-xs py-2 col-span-2 justify-center"><span class="text-lg">🚨</span> Alert (คำเตือน)</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ================= MAIN WORKSPACE ================= -->
+    <main class="main-workspace" onclick="closeSidebarOnMobile(event)">
+        <!-- Container สำหรับใส่หน้ากระดาษ -->
+        <div class="a4-container" id="app-content"></div>
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. DATA & CONFIGURATION
+        // ==========================================
+        const foxQuotes = [
+            {th: "ติวโต้รุ่งคืนนี้ สู้ๆ นะน้องบีเกิล!", en: "Good luck with your all-nighter, Beagle!"},
+            {th: "ความพยายามไม่เคยทรยศใคร", en: "hard work never betrays anyone"},
+            {th: "ก้าวเล็กๆ ในวันนี้ คือความสำเร็จในวันหน้า", en: "small steps today, big success tomorrow"},
+            {th: "ไม่ต้องเก่งที่สุด แค่ดีกว่าเมื่อวานก็พอ", en: "be better than you were yesterday"},
+            {th: "ความสำเร็จเกิดจากการลงมือทำ", en: "success comes from action"},
+            {th: "เหนื่อยได้ แต่อย่ายอมแพ้นะ", en: "it's okay to be tired, but never give up"}
+        ];
+
+        const emojis = {
+            "🦊 ธีมจิ้งจอก & สัตว์ (Animals)": ["🦊", "🐺", "🐶", "🐱", "🦁", "🐯", "🐻", "🐸", "🐼", "🐭", "🐰", "🐙", "🐵", "🐧", "🦉", "🦄", "🦇", "🦋", "🐝", "🦖", "🐢", "🐍", "🐬", "🐳", "🐘", "🦧", "🦍", "🐕", "🐈"],
+            "📚 เรียน & สอบ (Study & Exam)": ["📚", "📖", "📝", "✏️", "✒️", "🖋️", "🖍️", "🎒", "🎓", "📏", "📐", "📋", "📁", "📂", "📕", "📓", "📔", "📒", "🏫", "👩‍🎓", "👨‍🎓", "💼", "📎", "🖇️"],
+            "✅ สัญลักษณ์ (Signs & Marks)": ["✅", "✔️", "☑️", "❌", "✖️", "❗️", "❕", "❓", "❔", "⚠️", "🛑", "⛔", "🚫", "💯", "⭕", "📌", "📍", "✂️", "➕", "➖", "➗", "🚩", "🏁", "🏳️", "🎌", "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎"],
+            "💡 ไอเดีย & เน้นย้ำ (Ideas)": ["💡", "🔥", "✨", "🌟", "⭐", "💥", "⚡", "🎯", "🧠", "👀", "🗣️", "👍", "👎", "👆", "👇", "👉", "👈", "🙌", "👏", "🤝", "💪", "👊", "💬", "💭", "🗯️"],
+            "😎 อารมณ์ (Faces)": ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😎", "🤓", "🧐", "🤔", "🤫", "🤭", "🥱", "🤗", "😱", "🤯", "🥶", "🥵", "😈", "👻", "👽", "🤖", "🤡", "💩", "🤢", "🤮", "🤧", "🤕", "🤒"],
+            "🏆 ความสำเร็จ (Rewards)": ["🏆", "🏅", "🥇", "🥈", "🥉", "🎖️", "🏵️", "👑", "💎", "💸", "💵", "💴", "💶", "💷", "💰", "📈", "💹", "🪙", "💳"],
+            "🍔 อาหาร (Food & Drinks)": ["🍔", "🍟", "🍕", "🌭", "🍿", "🧂", "🥓", "🥚", "🍳", "🧇", "🥞", "🍞", "🥐", "🥨", "🥯", "🧀", "🥗", "🥪", "🌮", "☕", "🧋", "🍵", "🥤", "🧃", "🥛", "🍰", "🎂", "🧁", "🥧", "🍫", "🍬", "🍭", "🍮", "🍯", "🍩", "🍪", "🍨", "🍧", "🍦"],
+            "🚀 วิทยาศาสตร์ & ไอที (Sci & Tech)": ["🚀", "🛸", "🛰️", "🔭", "🔬", "📡", "💻", "⌨️", "🖱️", "💽", "💾", "💿", "📱", "⌚", "⏰", "⏱️", "🌡️", "🧬", "🩸", "💉", "💊", "🩹", "🩺", "🧪", "🧫", "⚙️", "🔧", "🪛", "🧲", "🔋", "🔌"],
+            "🎨 ศิลปะ & ของตกแต่ง (Art)": ["🎨", "🖌️", "🖍️", "🧵", "🧶", "🎼", "🎵", "🎶", "🎙️", "🎤", "🎧", "🎸", "🎹", "🎺", "🎻", "🥁", "🎬", "🎀", "🎈", "🎊", "🎉", "🏮", "✉️", "💌", "📥", "📦", "📊", "📉", "🗓️", "📅", "📆"],
+            "🌿 ธรรมชาติ (Nature & Weather)": ["🌿", "🍀", "☘️", "🪴", "🌴", "🌳", "🌲", "🪵", "🍁", "🍂", "🍃", "🍄", "🌺", "🌻", "🌼", "🌷", "🌹", "☀️", "🌤️", "⛅", "☁️", "🌦️", "🌧️", "⛈️", "🌩️", "❄️", "☃️", "⛄", "🌬️", "💨", "🌪️", "🌫️", "🌈", "☔", "💧", "💦", "🌊"],
+            "⚽ กิจกรรม & กีฬา (Sports)": ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🪃", "🥅", "⛳", "🪁", "🏹", "🎣", "🤿", "🥊", "🥋", "🎽", "🛹", "🛼", "⛸️", "🎿", "⛷️", "🏂", "🪂", "🏋️", "🤼", "🤸", "⛹️", "🤺", "🧘", "🏄", "🏊", "🤽", "🚣", "🧗", "🚵", "🚴"],
+            "🚗 การเดินทาง (Transport & Places)": ["🚗", "🚕", "🚙", "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚐", "🛻", "🚚", "🚛", "🚜", "🛴", "🚲", "🛵", "🏍️", "🛺", "🚨", "🚔", "🚍", "🚘", "🚖", "🚡", "🚠", "🚟", "🚃", "🚋", "🚞", "🚝", "🚄", "🚅", "🚈", "🚂", "🚆", "🚇", "🚊", "🚉", "✈️", "🛫", "🛬", "🛩️", "🚁", "🛶", "⛵", "🚤", "🛥️", "🛳️", "⛴️", "🚢", "⚓", "⛽", "🚧", "🚦", "🚥", "🚏", "🗺️"]
+        };
+
+        let userKeywords = {
+            trick: "ทริก,สูตร,เคล็ดลับ,Trick,Tip,Note,จำ,ผีจิ้งจอก,ทริกผีจิ้งจอก",
+            exam: "โจทย์,ตัวอย่าง,Ex,Example,Q:,Question,ข้อสอบ,ล็อคเป้า",
+            def: "นิยาม,ความหมาย,คือ,Def,Definition",
+            easy: "ง่ายๆ,สรุป,Easy,Simple,เหยื่อ,เหยื่ออันโอชะ",
+            dashed: "บันทึก,จด,Note,Memo,เพิ่มเติม",
+            solid: "คอนเซปต์,หลักการ,Concept,Key",
+            red: "ระวัง,เตือน,Warning,Alert,ผิดบ่อย,ห้าม"
+        };
+
+        // ==========================================
+        // 2. HTML TEMPLATES (REFACTORED)
+        // ==========================================
+        const UI_TEMPLATES = {
+            pages: {
+                // --- ORIGINAL SET ---
+                'cover': (ctx) => `<div class="a4-page page-cover relative group" style="background: white;">${ctx.controls}<div class="flex flex-col items-center justify-center w-full h-full relative z-10"><div class="text-[120px] mb-6 cursor-pointer transform hover:scale-110 transition duration-300 drop-shadow-md" contenteditable="true">🦊</div><h1 class="text-6xl font-black text-black tracking-tighter mb-4 text-center outline-none w-full drop-shadow-sm" contenteditable="true">Foxhunt Note</h1><h2 class="text-2xl text-orange-400 font-bold tracking-widest uppercase mb-12 text-center outline-none w-full" contenteditable="true">The Ultimate Collection</h2><div class="border-t-4 border-orange-300 w-24 mb-8 rounded-full"></div><div class="text-center"><p class="text-sm text-black font-bold uppercase mb-1 tracking-widest">Created By</p><p class="text-xl font-black text-black outline-none" contenteditable="true">พี่จิ้งจอก</p></div></div></div>`,
+                'preface': (ctx) => `<div class="a4-page relative group flex flex-col" style="background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);">${ctx.controls}<div class="deco-icon" style="bottom: -20px; left: -20px; font-size: 150pt; opacity: 0.03; transform: rotate(-10deg);">🦊</div><div class="page-header justify-center border-none mt-10 mb-6 flex flex-col items-center"><span class="text-6xl mb-4 cursor-pointer drop-shadow-sm hover:scale-110 transition-transform" contenteditable="true">🦊</span><h2 class="text-4xl font-black text-orange-700 tracking-tight" contenteditable="true">คำนำ</h2></div><div class="flex-grow px-12 relative z-10"><div class="content-editable-area w-full h-full outline-none text-base text-gray-700 leading-relaxed overflow-y-auto text-justify" contenteditable="true"><p class="mb-4">เอกสารสรุปชุดนี้จัดทำขึ้นเพื่อ...</p></div></div></div>`,
+                'blank': (ctx) => `<div class="a4-page relative group flex flex-col">${ctx.controls}<div class="deco-icon deco-moon" style="bottom: 20px; right: 20px; font-size: 80pt; transform: rotate(-15deg); opacity: 0.04;">🦊</div><div class="flex-grow flex flex-col relative z-10"><div class="content-editable-area w-full h-full outline-none text-base text-gray-700 leading-relaxed overflow-y-auto cursor-text" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์หน้าเปล่า...">${ctx.content ? ctx.content.full || '' : ''}</div></div><div class="page-footer"><span class="text-3xl mb-2 cursor-pointer" contenteditable="true">🦊</span><div class="max-w-lg mx-auto text-center" contenteditable="true"><p class="text-sm text-orange-600 font-bold mb-1">${ctx.randQ.th}</p><p class="text-xs text-gray-400 italic lowercase">${ctx.randQ.en}</p></div><div class="absolute bottom-5 right-0 text-xl font-black text-gray-200 page-num-display"></div></div></div>`,
+                'separator': (ctx) => `<div class="a4-page page-separator relative group flex flex-col" style="padding: 0 !important; width: var(--page-width) !important; height: var(--page-height) !important; overflow: hidden !important; display: flex !important; background: var(--bg-white);">${ctx.controls}<div class="deco-icon deco-stars" style="top: 80px; left: 60px; font-size: 40pt;">✨</div><div class="deco-icon deco-moon" style="top: 60px; right: 60px; font-size: 60pt; transform: rotate(-15deg);">🌙</div><div style="background: var(--fox-orange); flex: 1; width: 100%; border-bottom-left-radius: 120px; border-bottom-right-radius: 120px; z-index: 1;"></div><div style="position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); z-index: 10;"><div class="text-[160px] leading-none filter drop-shadow-xl cursor-pointer hover:scale-105 transition-transform duration-300" contenteditable="true">🦊</div></div><div style="background: var(--bg-white); flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; padding-top: 100px; z-index: 0;"><div style="text-align: center; display: flex; flex-direction: column; gap: 10px; width: 100%; px-12;"><span style="font-size: 36pt; font-weight: 700; color: var(--midnight-moon); letter-spacing: 2px;" class="outline-none" contenteditable="true">หมวด 1</span><span style="font-size: 18pt; font-weight: 400; color: var(--fox-orange); letter-spacing: 4px; text-transform: uppercase;" class="outline-none" contenteditable="true">หลักทั่วไป / General Provisions</span></div></div></div>`,
+                'exam_page': (ctx) => `<div class="a4-page relative group flex flex-col" style="padding: 0 !important; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);">${ctx.controls}<div class="deco-icon" style="bottom: -30px; left: -30px; font-size: 200pt; opacity: 0.04; transform: rotate(-15deg);">🦊</div><div class="deco-icon" style="top: 30px; right: 30px; font-size: 100pt; opacity: 0.04;">🐶</div><div class="flex-1 p-12 flex flex-col relative z-10 w-full h-full"><div class="bg-white rounded-[2rem] shadow-2xl border-b-8 border-orange-500 flex flex-col h-full relative p-10 overflow-hidden w-full"><!-- Header Label --><div class="absolute top-0 left-0 bg-orange-500 text-white px-8 py-3 rounded-br-3xl font-black tracking-widest text-sm shadow-md outline-none" contenteditable="true">PRACTICE TEST</div><!-- Fox Head --><div class="absolute top-6 right-8 text-5xl cursor-pointer hover:scale-110 transition-transform drop-shadow-md outline-none" contenteditable="true">🦊</div><!-- Question Area --><div class="flex-1 flex flex-col justify-center mt-12 outline-none w-full" contenteditable="true"><div class="text-center mb-10 w-full"><span class="text-orange-600 font-black text-xl tracking-widest mb-4 block outline-none">QUESTION</span><div class="quiz-q outline-none w-full" style="font-size: 24pt; color: var(--midnight-moon); line-height: 1.5; font-family: var(--font-heading);">${ctx.q}</div><div class="text-gray-400 mt-4 text-base font-bold">(อ้างอิง: ข้อสอบจริงปี...)</div></div><!-- Options Area --><div class="grid grid-cols-2 gap-6 w-full max-w-4xl mx-auto"><div class="opt-item flex items-center p-6 bg-slate-50 border-2 border-slate-200 rounded-2xl gap-4 hover:border-orange-400 hover:bg-orange-50 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-white text-orange-600 font-black text-xl rounded-full shadow-sm flex-shrink-0">A</div><div class="flex-1 text-xl text-gray-700 font-medium">ตัวเลือกที่ 1</div></div><div class="opt-item flex items-center p-6 bg-slate-50 border-2 border-slate-200 rounded-2xl gap-4 hover:border-orange-400 hover:bg-orange-50 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-white text-orange-600 font-black text-xl rounded-full shadow-sm flex-shrink-0">B</div><div class="flex-1 text-xl text-gray-700 font-medium">ตัวเลือกที่ 2</div></div><div class="opt-item flex items-center p-6 bg-slate-50 border-2 border-slate-200 rounded-2xl gap-4 hover:border-orange-400 hover:bg-orange-50 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-white text-orange-600 font-black text-xl rounded-full shadow-sm flex-shrink-0">C</div><div class="flex-1 text-xl text-gray-700 font-medium">ตัวเลือกที่ 3</div></div><div class="opt-item flex items-center p-6 bg-slate-50 border-2 border-slate-200 rounded-2xl gap-4 hover:border-orange-400 hover:bg-orange-50 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-white text-orange-600 font-black text-xl rounded-full shadow-sm flex-shrink-0">D</div><div class="flex-1 text-xl text-gray-700 font-medium">ตัวเลือกที่ 4</div></div></div></div><!-- Answer Box --><div class="mt-4 flex flex-col items-center w-full"><div id="ans_page_${ctx.uid}" class="quiz-ans-box outline-none w-full max-w-md mt-1 text-gray-800 p-3" style="display:block; border: none !important; background: transparent !important; box-shadow: none !important;" contenteditable="true"><div class="text-sm mb-1 text-center text-green-600 font-black">✅ เฉลย: A. ตัวเลือกที่ 1</div><div class="border-t border-orange-200 my-1"></div><div class="text-xs leading-relaxed text-gray-700 font-medium"><b>🐾 คำอธิบาย:</b> พิมพ์เหตุผลอธิบายคำตอบสั้นๆ ให้เข้าใจง่าย... <br><span class="text-orange-600"><b>🦊 ทริกพี่จิ้งจอก & 🐶 น้องบีเกิล:</b></span> จุดหลอกที่ชอบออกคือตรงนี้ ระวังให้ดีนะ!</div></div></div></div></div></div>`,
+                'content': (ctx) => {
+                    let bodyContent = ctx.content ? `<div class="article-card"><span class="article-label outline-none" contenteditable="true">หัวข้อ: ${ctx.title}</span><div class="article-text outline-none" contenteditable="true">"${ctx.def}"</div><div class="fox-explanation"><span class="explanation-icon">🐾</span><span class="outline-none" contenteditable="true"><b>พี่จิ้งจอกสรุปให้:</b> ${ctx.easy}</span></div></div>` : '';
+                    return `<div class="a4-page relative group">${ctx.controls}<div class="deco-icon deco-stars" style="top: 10px; right: 20px; font-size: 30pt;">✨</div><div class="page-header"><span class="text-5xl mr-4 cursor-pointer" contenteditable="true">🦊</span><div class="flex flex-col w-full"><h3 class="text-2xl font-bold text-gray-800 tracking-tight leading-tight min-h-[32px] outline-none" contenteditable="true">${ctx.title}</h3><div class="flex items-center gap-2 mt-1"><p class="text-[10px] text-gray-400 font-medium tracking-widest uppercase" contenteditable="true">(c) Foxhunt Shortnote Series</p></div></div></div><div class="flex-grow flex flex-col pt-2 relative"><div class="content-editable-area w-full h-full outline-none text-base text-gray-700 leading-relaxed overflow-y-auto cursor-text" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์...">${bodyContent}</div></div><div class="page-footer"><span class="text-3xl mb-2 cursor-pointer" contenteditable="true">🦊</span><div class="max-w-lg mx-auto text-center" contenteditable="true"><p class="text-sm text-orange-600 font-bold mb-1">${ctx.randQ.th}</p><p class="text-xs text-gray-400 italic lowercase">${ctx.randQ.en}</p></div><div class="absolute bottom-5 right-0 text-xl font-black text-gray-200 page-num-display"></div></div></div>`;
+                },
+                'last': (ctx) => `<div class="a4-page flex flex-col items-center justify-center text-center bg-white relative group" style="background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 20px 20px;">${ctx.controls}<div class="bg-white p-10 rounded-3xl shadow-xl border-2 border-dashed border-gray-300 relative overflow-hidden max-w-xl w-full z-10"><div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-gray-800 to-gray-500"></div><div class="text-8xl mb-6 cursor-pointer transform hover:scale-110 transition duration-300" contenteditable="true">👻</div><h2 class="text-4xl font-black text-gray-900 mb-2 tracking-tighter uppercase outline-none" contenteditable="true">Ghost Zone</h2><p class="text-orange-600 text-sm mb-8 font-bold tracking-widest outline-none uppercase" contenteditable="true">-- พื้นที่ลับสำหรับสรุปความรู้หน้าสุดท้าย --</p><div class="space-y-4 text-left bg-gray-50 p-6 rounded-2xl border border-gray-100"><div class="flex items-start gap-4"><span class="text-2xl mt-1">🔥</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Final Trick 01</div><div class="text-sm font-semibold text-gray-800 outline-none" contenteditable="true">พิมพ์เทคนิคสุดท้ายที่นี่...</div></div></div><div class="flex items-start gap-4"><span class="text-2xl mt-1">⚡</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Final Trick 02</div><div class="text-sm font-semibold text-gray-800 outline-none" contenteditable="true">พิมพ์ข้อควรระวังสุดท้ายที่นี่...</div></div></div><div class="flex items-start gap-4"><span class="text-2xl mt-1">🦊</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Fox's Quote</div><div class="text-sm font-semibold text-orange-700 outline-none italic" contenteditable="true">"จบการล่า! ขอให้โชคดีกับข้อสอบนะน้องบีเกิล"</div></div></div></div></div></div>`,
+
+                // --- MINIMAL SET ---
+                'cover_minimal': (ctx) => `<div class="a4-page page-cover relative group bg-white">${ctx.controls}<div class="flex flex-col items-center justify-center w-full h-full relative z-10"><div class="text-6xl mb-10 cursor-pointer opacity-90 hover:opacity-100 transition-opacity" contenteditable="true">🦊</div><h1 class="text-5xl font-light text-gray-800 tracking-[0.1em] mb-4 text-center outline-none w-full" contenteditable="true">FOXHUNT NOTE</h1><h2 class="text-xs text-orange-500 font-medium tracking-[0.3em] uppercase mb-16 text-center outline-none w-full" contenteditable="true">The Ultimate Collection</h2><div class="border-t border-gray-200 w-12 mb-16"></div><div class="text-center"><p class="text-[10px] text-gray-400 font-medium uppercase mb-2 tracking-widest">Created By</p><p class="text-sm font-medium text-gray-500 outline-none tracking-widest" contenteditable="true">พี่จิ้งจอก</p></div></div></div>`,
+                'preface_minimal': (ctx) => `<div class="a4-page relative group flex flex-col bg-white">${ctx.controls}<div class="page-header justify-center border-none mt-16 mb-8 flex flex-col items-center"><h2 class="text-2xl font-light text-gray-800 tracking-[0.2em] uppercase border-b border-gray-200 pb-4 outline-none" contenteditable="true">Preface</h2></div><div class="flex-grow px-12 relative z-10"><div class="content-editable-area w-full h-full outline-none text-sm text-gray-600 leading-relaxed overflow-y-auto text-justify font-light" contenteditable="true"><p class="mb-4">เอกสารสรุปชุดนี้จัดทำขึ้นเพื่อ...</p></div></div></div>`,
+                'blank_minimal': (ctx) => `<div class="a4-page relative group flex flex-col bg-white">${ctx.controls}<div class="flex-grow flex flex-col relative z-10"><div class="content-editable-area w-full h-full outline-none text-sm text-gray-600 leading-relaxed overflow-y-auto cursor-text font-light" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์หน้าเปล่า...">${ctx.content ? ctx.content.full || '' : ''}</div></div><div class="page-footer border-none"><div class="w-full text-center text-gray-300 text-[10px] font-light tracking-widest uppercase outline-none" contenteditable="true">${ctx.randQ.en}</div></div></div>`,
+                'separator_minimal': (ctx) => `<div class="a4-page page-separator relative group flex flex-col justify-center items-center bg-white text-center" style="padding: 0 !important; width: var(--page-width) !important; height: var(--page-height) !important; overflow: hidden !important; display: flex !important;">${ctx.controls}<div class="w-12 border-t border-gray-300 mb-8"></div><span style="font-size: 24pt; font-weight: 300; color: #374151; letter-spacing: 0.1em;" class="outline-none" contenteditable="true">PART 1</span><span style="font-size: 10pt; font-weight: 300; color: #9ca3af; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 12px;" class="outline-none" contenteditable="true">General Provisions</span><div class="w-12 border-t border-gray-300 mt-8"></div></div>`,
+                'exam_page_minimal': (ctx) => `<div class="a4-page relative group flex flex-col bg-white" style="padding: 0 !important;">${ctx.controls}<div class="flex-1 p-12 flex flex-col relative z-10 w-full h-full"><div class="bg-white rounded-xl border border-gray-200 flex flex-col h-full relative p-10 overflow-hidden w-full"><div class="absolute top-6 left-8 text-gray-400 font-light tracking-[0.2em] text-[10px] uppercase outline-none" contenteditable="true">Practice Test</div><div class="flex-1 flex flex-col justify-center mt-6 outline-none w-full" contenteditable="true"><div class="text-center mb-12 w-full"><div class="quiz-q outline-none w-full" style="font-size: 18pt; color: #374151; line-height: 1.6; font-family: var(--font-body); font-weight: 300;">${ctx.q}</div></div><div class="grid grid-cols-2 gap-4 w-full max-w-4xl mx-auto"><div class="opt-item flex items-center p-4 bg-white border border-gray-200 rounded-lg gap-4 hover:border-gray-400 transition-colors cursor-text outline-none"><div class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-500 font-light text-sm rounded-full flex-shrink-0">A</div><div class="flex-1 text-sm text-gray-600 font-light">ตัวเลือกที่ 1</div></div><div class="opt-item flex items-center p-4 bg-white border border-gray-200 rounded-lg gap-4 hover:border-gray-400 transition-colors cursor-text outline-none"><div class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-500 font-light text-sm rounded-full flex-shrink-0">B</div><div class="flex-1 text-sm text-gray-600 font-light">ตัวเลือกที่ 2</div></div><div class="opt-item flex items-center p-4 bg-white border border-gray-200 rounded-lg gap-4 hover:border-gray-400 transition-colors cursor-text outline-none"><div class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-500 font-light text-sm rounded-full flex-shrink-0">C</div><div class="flex-1 text-sm text-gray-600 font-light">ตัวเลือกที่ 3</div></div><div class="opt-item flex items-center p-4 bg-white border border-gray-200 rounded-lg gap-4 hover:border-gray-400 transition-colors cursor-text outline-none"><div class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-500 font-light text-sm rounded-full flex-shrink-0">D</div><div class="flex-1 text-sm text-gray-600 font-light">ตัวเลือกที่ 4</div></div></div></div><div class="mt-8 flex flex-col items-center w-full"><div id="ans_page_${ctx.uid}" class="quiz-ans-box outline-none w-full max-w-2xl mt-4 text-gray-600 p-6" style="display:block; border: none !important; background: transparent !important; box-shadow: none !important;" contenteditable="true"><div class="text-sm mb-2 text-center text-gray-800 font-medium tracking-wide">เฉลย: A. ตัวเลือกที่ 1</div><div class="border-t border-gray-100 my-4 w-12 mx-auto"></div><div class="text-xs leading-relaxed text-gray-500 font-light text-center">พิมพ์เหตุผลอธิบายคำตอบสั้นๆ ให้เข้าใจง่าย... <br><br><span class="text-gray-400"><i>Note: จุดหลอกที่ชอบออกคือตรงนี้</i></span></div></div></div></div></div></div>`,
+                'content_minimal': (ctx) => {
+                    let bodyContent = ctx.content ? `<div class="article-card"><span class="article-label outline-none bg-gray-100 text-gray-600 font-normal px-3 py-1 rounded" contenteditable="true">${ctx.title}</span><div class="article-text outline-none bg-transparent border-l border-gray-300 pl-4 py-1 my-4 text-gray-500" contenteditable="true">"${ctx.def}"</div><div class="text-sm text-gray-600 mt-2 font-light outline-none" contenteditable="true"><span class="text-gray-400 mr-2">Note:</span> ${ctx.easy}</div></div>` : '';
+                    return `<div class="a4-page relative group bg-white">${ctx.controls}<div class="page-header border-b border-gray-200 pb-4 mb-6"><div class="flex flex-col w-full"><h3 class="text-xl font-light text-gray-800 tracking-wide leading-tight outline-none" contenteditable="true">${ctx.title}</h3><p class="text-[9px] text-gray-400 font-light tracking-[0.2em] uppercase mt-2 outline-none" contenteditable="true">Foxhunt Minimal Note</p></div></div><div class="flex-grow flex flex-col relative"><div class="content-editable-area w-full h-full outline-none text-sm text-gray-600 leading-relaxed overflow-y-auto cursor-text font-light" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์...">${bodyContent}</div></div><div class="page-footer border-t border-gray-100 pt-4 mt-6"><div class="text-center w-full flex justify-between items-center text-gray-400 text-[10px]"><span contenteditable="true" class="opacity-50">🦊</span><span contenteditable="true" class="font-light tracking-widest uppercase">${ctx.randQ.en}</span><span class="page-num-display"></span></div></div></div>`;
+                },
+                'last_minimal': (ctx) => `<div class="a4-page flex flex-col items-center justify-center text-center bg-white relative group">${ctx.controls}<div class="bg-white p-12 rounded-xl border border-gray-200 relative overflow-hidden max-w-lg w-full z-10"><h2 class="text-2xl font-light text-gray-800 mb-2 tracking-[0.2em] uppercase outline-none" contenteditable="true">End of Note</h2><div class="w-8 border-t border-gray-200 mx-auto my-6"></div><div class="space-y-6 text-left"><div class="flex items-start gap-4"><div class="flex-1"><div class="text-[9px] font-light text-gray-400 uppercase tracking-widest mb-1">Final Checklist 01</div><div class="text-sm font-light text-gray-600 outline-none" contenteditable="true">ทบทวนประเด็นหลัก...</div></div></div><div class="flex items-start gap-4"><div class="flex-1"><div class="text-[9px] font-light text-gray-400 uppercase tracking-widest mb-1">Final Checklist 02</div><div class="text-sm font-light text-gray-600 outline-none" contenteditable="true">ข้อควรระวังสุดท้าย...</div></div></div></div><div class="mt-10 pt-6 border-t border-gray-100 text-center"><div class="text-[9px] font-light text-gray-400 uppercase tracking-widest mb-2 outline-none" contenteditable="true">Quote</div><div class="text-xs font-light text-gray-500 outline-none italic" contenteditable="true">"Good luck with your exam."</div></div></div></div>`,
+
+                // --- NIGHT MODE SET ---
+                'cover_night': (ctx) => `<div class="a4-page page-cover relative group bg-[#111827] text-white">${ctx.controls}<div class="deco-icon text-orange-500" style="top: -20px; right: -20px; font-size: 200pt; opacity: 0.05; transform: rotate(15deg);">🦊</div><div class="flex flex-col items-center justify-center w-full h-full relative z-10"><div class="text-[120px] mb-6 cursor-pointer transform hover:scale-110 transition duration-300 drop-shadow-[0_0_15px_rgba(211,84,0,0.8)]" contenteditable="true">🦊</div><h1 class="text-6xl font-black text-orange-500 tracking-tighter mb-4 text-center outline-none w-full drop-shadow-[0_0_10px_rgba(241,196,15,0.5)]" contenteditable="true">Foxhunt Note</h1><h2 class="text-2xl text-gray-400 font-light tracking-widest uppercase mb-12 text-center outline-none w-full" contenteditable="true">Midnight Edition</h2><div class="border-t-2 border-gray-700 w-24 mb-8"></div><div class="text-center"><p class="text-sm text-gray-500 font-bold uppercase mb-1 tracking-widest">Created By</p><p class="text-xl font-bold text-gray-300 outline-none" contenteditable="true">พี่จิ้งจอกสายโต้รุ่ง</p></div></div></div>`,
+                'preface_night': (ctx) => `<div class="a4-page relative group flex flex-col bg-[#111827] text-white">${ctx.controls}<div class="deco-icon text-orange-500" style="bottom: -20px; left: -20px; font-size: 150pt; opacity: 0.03; transform: rotate(-10deg);">🦊</div><div class="page-header justify-center border-none mt-10 mb-6 flex flex-col items-center"><span class="text-6xl mb-4 cursor-pointer drop-shadow-[0_0_15px_rgba(211,84,0,0.6)] hover:scale-110 transition-transform" contenteditable="true">🦊</span><h2 class="text-4xl font-black text-orange-500 tracking-tight" contenteditable="true">คำนำ (โต้รุ่ง)</h2></div><div class="flex-grow px-12 relative z-10"><div class="content-editable-area w-full h-full outline-none text-base text-gray-300 leading-relaxed overflow-y-auto text-justify" contenteditable="true"><p class="mb-4">เอกสารสรุปชุดนี้จัดทำขึ้นเพื่อคนที่กำลังโต้รุ่ง...</p></div></div></div>`,
+                'blank_night': (ctx) => `<div class="a4-page relative group flex flex-col bg-[#111827] text-gray-300">${ctx.controls}<div class="deco-icon deco-moon text-yellow-400" style="bottom: 20px; right: 20px; font-size: 80pt; transform: rotate(-15deg); opacity: 0.1;">🌙</div><div class="flex-grow flex flex-col relative z-10"><div class="content-editable-area w-full h-full outline-none text-base text-gray-300 leading-relaxed overflow-y-auto cursor-text" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์หน้าเปล่า...">${ctx.content ? ctx.content.full || '' : ''}</div></div><div class="page-footer border-gray-700"><span class="text-3xl mb-2 cursor-pointer drop-shadow-[0_0_5px_rgba(241,196,15,0.8)]" contenteditable="true">🦊</span><div class="max-w-lg mx-auto text-center" contenteditable="true"><p class="text-sm text-orange-400 font-bold mb-1">${ctx.randQ.th}</p><p class="text-xs text-gray-500 italic lowercase">${ctx.randQ.en}</p></div><div class="absolute bottom-5 right-0 text-xl font-black text-gray-700 page-num-display"></div></div></div>`,
+                'separator_night': (ctx) => `<div class="a4-page page-separator relative group flex flex-col" style="padding: 0 !important; width: var(--page-width) !important; height: var(--page-height) !important; overflow: hidden !important; display: flex !important; background: #111827;">${ctx.controls}<div class="deco-icon text-yellow-400" style="top: 80px; left: 60px; font-size: 40pt;">✨</div><div class="deco-icon text-yellow-300" style="top: 60px; right: 60px; font-size: 60pt; transform: rotate(-15deg);">🌙</div><div style="background: var(--fox-orange); flex: 1; width: 100%; border-bottom-left-radius: 120px; border-bottom-right-radius: 120px; z-index: 1; box-shadow: 0 10px 30px rgba(211,84,0,0.3);"></div><div style="position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%); z-index: 10;"><div class="text-[160px] leading-none filter drop-shadow-[0_0_20px_rgba(241,196,15,0.6)] cursor-pointer hover:scale-105 transition-transform duration-300" contenteditable="true">🦊</div></div><div style="background: #111827; flex: 1; width: 100%; display: flex; justify-content: center; align-items: flex-start; padding-top: 100px; z-index: 0;"><div style="text-align: center; display: flex; flex-direction: column; gap: 10px; width: 100%; px-12;"><span style="font-size: 36pt; font-weight: 700; color: #f3f4f6; letter-spacing: 2px;" class="outline-none" contenteditable="true">หมวด 1</span><span style="font-size: 18pt; font-weight: 400; color: #f97316; letter-spacing: 4px; text-transform: uppercase;" class="outline-none" contenteditable="true">หลักทั่วไป / General Provisions</span></div></div></div>`,
+                'exam_page_night': (ctx) => `<div class="a4-page relative group flex flex-col bg-[#111827]" style="padding: 0 !important;">${ctx.controls}<div class="deco-icon text-orange-500" style="bottom: -30px; left: -30px; font-size: 200pt; opacity: 0.05; transform: rotate(-15deg);">🦊</div><div class="deco-icon text-yellow-400" style="top: 30px; right: 30px; font-size: 100pt; opacity: 0.05;">🐶</div><div class="flex-1 p-12 flex flex-col relative z-10 w-full h-full"><div class="bg-gray-800 rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.5)] border-b-8 border-orange-500 flex flex-col h-full relative p-10 overflow-hidden w-full text-gray-200"><div class="absolute top-0 left-0 bg-orange-500 text-white px-8 py-3 rounded-br-3xl font-black tracking-widest text-sm shadow-md outline-none" contenteditable="true">PRACTICE TEST</div><div class="absolute top-6 right-8 text-5xl cursor-pointer hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(241,196,15,0.6)] outline-none" contenteditable="true">🦊</div><div class="flex-1 flex flex-col justify-center mt-12 outline-none w-full" contenteditable="true"><div class="text-center mb-10 w-full"><span class="text-orange-400 font-black text-xl tracking-widest mb-4 block outline-none">QUESTION</span><div class="quiz-q outline-none w-full" style="font-size: 24pt; color: #f3f4f6; line-height: 1.5; font-family: var(--font-heading);">${ctx.q}</div><div class="text-gray-500 mt-4 text-base font-bold">(อ้างอิง: ข้อสอบจริงปี...)</div></div><div class="grid grid-cols-2 gap-6 w-full max-w-4xl mx-auto"><div class="opt-item flex items-center p-6 bg-gray-700 border-2 border-gray-600 rounded-2xl gap-4 hover:border-orange-500 hover:bg-gray-600 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-gray-800 text-orange-400 font-black text-xl rounded-full shadow-sm flex-shrink-0">A</div><div class="flex-1 text-xl text-gray-200 font-medium">ตัวเลือกที่ 1</div></div><div class="opt-item flex items-center p-6 bg-gray-700 border-2 border-gray-600 rounded-2xl gap-4 hover:border-orange-500 hover:bg-gray-600 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-gray-800 text-orange-400 font-black text-xl rounded-full shadow-sm flex-shrink-0">B</div><div class="flex-1 text-xl text-gray-200 font-medium">ตัวเลือกที่ 2</div></div><div class="opt-item flex items-center p-6 bg-gray-700 border-2 border-gray-600 rounded-2xl gap-4 hover:border-orange-500 hover:bg-gray-600 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-gray-800 text-orange-400 font-black text-xl rounded-full shadow-sm flex-shrink-0">C</div><div class="flex-1 text-xl text-gray-200 font-medium">ตัวเลือกที่ 3</div></div><div class="opt-item flex items-center p-6 bg-gray-700 border-2 border-gray-600 rounded-2xl gap-4 hover:border-orange-500 hover:bg-gray-600 transition-colors shadow-sm cursor-text outline-none"><div class="w-12 h-12 flex items-center justify-center bg-gray-800 text-orange-400 font-black text-xl rounded-full shadow-sm flex-shrink-0">D</div><div class="flex-1 text-xl text-gray-200 font-medium">ตัวเลือกที่ 4</div></div></div></div><div class="mt-4 flex flex-col items-center w-full"><div id="ans_page_${ctx.uid}" class="quiz-ans-box outline-none w-full max-w-md mt-1 text-gray-300 p-3" style="display:block; border: none !important; background: transparent !important; box-shadow: none !important;" contenteditable="true"><div class="text-sm mb-1 text-center text-green-400 font-black">✅ เฉลย: A. ตัวเลือกที่ 1</div><div class="border-t border-gray-600 my-1"></div><div class="text-xs leading-relaxed text-gray-400 font-medium"><b>🐾 คำอธิบาย:</b> พิมพ์เหตุผลอธิบายคำตอบสั้นๆ ให้เข้าใจง่าย... <br><span class="text-orange-400"><b>🦊 ทริกพี่จิ้งจอก & 🐶 น้องบีเกิล:</b></span> จุดหลอกที่ชอบออกคือตรงนี้ ระวังให้ดีนะ!</div></div></div></div></div></div>`,
+                'content_night': (ctx) => {
+                    let bodyContent = ctx.content ? `<div class="article-card"><span class="article-label outline-none bg-orange-600 text-white font-normal px-3 py-1 rounded" contenteditable="true">หัวข้อ: ${ctx.title}</span><div class="article-text outline-none bg-gray-800 border-l-4 border-orange-500 pl-4 py-3 my-4 text-gray-300" contenteditable="true">"${ctx.def}"</div><div class="fox-explanation bg-gray-800 border border-gray-700 text-gray-300"><span class="explanation-icon">🐾</span><span class="outline-none" contenteditable="true"><b class="text-orange-400">พี่จิ้งจอกสรุปให้:</b> ${ctx.easy}</span></div></div>` : '';
+                    return `<div class="a4-page relative group bg-[#111827] text-gray-200">${ctx.controls}<div class="deco-icon deco-stars text-orange-400" style="top: 10px; right: 20px; font-size: 30pt; opacity: 0.15;">✨</div><div class="page-header border-b border-gray-700 pb-4 mb-6"><span class="text-5xl mr-4 cursor-pointer drop-shadow-[0_0_8px_rgba(241,196,15,0.6)]" contenteditable="true">🦊</span><div class="flex flex-col w-full"><h3 class="text-2xl font-bold text-gray-100 tracking-tight leading-tight min-h-[32px] outline-none" contenteditable="true">${ctx.title}</h3><p class="text-[10px] text-orange-500 font-medium tracking-widest uppercase mt-1 outline-none" contenteditable="true">(c) Foxhunt Night Series</p></div></div><div class="flex-grow flex flex-col pt-2 relative"><div class="content-editable-area w-full h-full outline-none text-base text-gray-300 leading-relaxed overflow-y-auto cursor-text" contenteditable="true" placeholder="คลิกเพื่อเริ่มพิมพ์...">${bodyContent}</div></div><div class="page-footer border-t border-gray-700 pt-4 mt-4"><span class="text-3xl mb-2 cursor-pointer drop-shadow-[0_0_5px_rgba(241,196,15,0.8)]" contenteditable="true">🦊</span><div class="max-w-lg mx-auto text-center" contenteditable="true"><p class="text-sm text-orange-400 font-bold mb-1">${ctx.randQ.th}</p><p class="text-xs text-gray-500 italic lowercase">${ctx.randQ.en}</p></div><div class="absolute bottom-5 right-0 text-xl font-black text-gray-800 page-num-display"></div></div></div>`;
+                },
+                'last_night': (ctx) => `<div class="a4-page flex flex-col items-center justify-center text-center bg-[#111827] relative group" style="background-image: radial-gradient(#374151 1.5px, transparent 1.5px); background-size: 20px 20px;">${ctx.controls}<div class="bg-gray-800 p-10 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] border border-gray-700 relative overflow-hidden max-w-xl w-full z-10"><div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-600 to-yellow-500"></div><div class="text-8xl mb-6 cursor-pointer transform hover:scale-110 transition duration-300 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" contenteditable="true">👻</div><h2 class="text-4xl font-black text-gray-100 mb-2 tracking-tighter uppercase outline-none" contenteditable="true">Ghost Zone</h2><p class="text-orange-500 text-sm mb-8 font-bold tracking-widest outline-none uppercase" contenteditable="true">-- พื้นที่ลับสำหรับโต้รุ่งคืนสุดท้าย --</p><div class="space-y-4 text-left bg-gray-900 p-6 rounded-2xl border border-gray-700"><div class="flex items-start gap-4"><span class="text-2xl mt-1">🔥</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Final Trick 01</div><div class="text-sm font-semibold text-gray-300 outline-none" contenteditable="true">พิมพ์เทคนิคสุดท้ายที่นี่...</div></div></div><div class="flex items-start gap-4"><span class="text-2xl mt-1">⚡</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Final Trick 02</div><div class="text-sm font-semibold text-gray-300 outline-none" contenteditable="true">พิมพ์ข้อควรระวังสุดท้ายที่นี่...</div></div></div><div class="flex items-start gap-4"><span class="text-2xl mt-1 drop-shadow-[0_0_5px_rgba(241,196,15,0.8)]">🦊</span><div class="flex-1"><div class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Fox's Quote</div><div class="text-sm font-semibold text-orange-400 outline-none italic" contenteditable="true">"ตื่นไปสอบให้ทันล่ะ! ขอให้โชคดีนะน้องบีเกิล"</div></div></div></div></div></div>`,
+
+                // --- NOTEBOOK SET ---
+                'cover_note': (ctx) => `<div class="a4-page page-cover relative group pattern-grid" style="background-color: #fdfbf7;">${ctx.controls}<div class="flex flex-col items-center justify-center w-full h-full relative z-10"><div class="bg-white p-12 rounded-lg shadow-md border border-gray-200 w-[80%] flex flex-col items-center transform -rotate-1 relative"><div class="absolute -top-4 w-32 h-8 bg-yellow-200/60 transform rotate-2 shadow-sm"></div><div class="text-[100px] mb-4 cursor-pointer" contenteditable="true">🦊</div><h1 class="text-5xl font-bold text-blue-800 tracking-tight mb-2 text-center outline-none w-full" style="font-family: 'Mali', cursive;" contenteditable="true">Foxhunt Note</h1><h2 class="text-lg text-gray-500 font-medium mb-8 text-center outline-none w-full" style="font-family: 'Mali', cursive;" contenteditable="true">Notebook Edition</h2><div class="text-center w-full border-t-2 border-dashed border-gray-300 pt-6"><p class="text-sm text-gray-400 font-bold uppercase mb-1">Subject / Owner</p><p class="text-xl font-bold text-blue-600 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">พี่จิ้งจอก (สมุดจด)</p></div></div></div></div>`,
+                'preface_note': (ctx) => `<div class="a4-page relative group flex flex-col pattern-grid" style="background-color: #fdfbf7;">${ctx.controls}<div class="page-header justify-center border-none mt-10 mb-6 flex flex-col items-center"><h2 class="text-4xl font-bold text-blue-800 tracking-tight" style="font-family: 'Mali', cursive;" contenteditable="true">คำนำ (สมุดจด)</h2><div class="w-16 h-1 bg-red-400 mt-2 rounded"></div></div><div class="flex-grow px-12 relative z-10"><div class="content-editable-area w-full h-full outline-none text-base text-gray-800 leading-relaxed overflow-y-auto text-justify" style="font-family: 'Mali', cursive;" contenteditable="true"><p class="mb-4">สมุดจดเล่มนี้สร้างขึ้นมาเพื่อ...</p></div></div></div>`,
+                'blank_note': (ctx) => `<div class="a4-page relative group flex flex-col pattern-lines" style="background-color: #fdfbf7;">${ctx.controls}<div class="absolute top-0 bottom-0 left-[40px] w-px bg-red-300 z-0"></div><div class="absolute top-0 bottom-0 left-[46px] w-px bg-red-300 opacity-50 z-0"></div><div class="flex-grow flex flex-col relative z-10 ml-16 pl-2 pt-2"><div class="content-editable-area w-full h-full outline-none text-base text-blue-900 leading-[32px] overflow-y-auto cursor-text" style="font-family: 'Mali', cursive;" contenteditable="true" placeholder="คลิกเพื่อเริ่มจด...">${ctx.content ? ctx.content.full || '' : ''}</div></div><div class="page-footer border-none z-10 ml-16"><div class="max-w-lg mx-auto text-center" contenteditable="true"><p class="text-sm text-blue-600 font-bold mb-1" style="font-family: 'Mali', cursive;">${ctx.randQ.th}</p></div></div></div>`,
+                'separator_note': (ctx) => `<div class="a4-page page-separator relative group flex flex-col justify-center items-center text-center pattern-grid" style="padding: 0 !important; width: var(--page-width) !important; height: var(--page-height) !important; overflow: hidden !important; display: flex !important; background-color: #fdfbf7;">${ctx.controls}<div class="bg-white px-16 py-10 rounded-sm shadow-sm border border-gray-300 transform rotate-1 relative"><div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-24 h-6 bg-red-200/50 shadow-sm"></div><span style="font-size: 32pt; font-weight: 700; color: #1e3a8a; font-family: 'Mali', cursive; display: block;" class="outline-none" contenteditable="true">บทที่ 1</span><span style="font-size: 16pt; font-weight: 400; color: #dc2626; font-family: 'Mali', cursive; margin-top: 10px; display: block;" class="outline-none" contenteditable="true">เริ่มจดเนื้อหาตรงนี้</span></div></div>`,
+                'exam_page_note': (ctx) => `<div class="a4-page relative group flex flex-col pattern-lines" style="padding: 0 !important; background-color: #fdfbf7;">${ctx.controls}<div class="absolute top-0 bottom-0 left-[40px] w-px bg-red-300 z-0"></div><div class="absolute top-0 bottom-0 left-[46px] w-px bg-red-300 opacity-50 z-0"></div><div class="flex-1 p-10 flex flex-col relative z-10 w-full h-full ml-16"><div class="bg-white rounded-lg shadow-md border border-gray-200 flex flex-col h-full relative p-8 w-[95%]"><div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-32 h-6 bg-yellow-200/60 shadow-sm"></div><div class="absolute top-6 left-6 text-blue-500 font-bold tracking-widest text-sm outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">QUIZ TIME!</div><div class="absolute top-4 right-6 text-4xl cursor-pointer outline-none" contenteditable="true">🐶</div><div class="flex-1 flex flex-col mt-10 outline-none w-full" contenteditable="true"><div class="mb-8 w-full"><div class="quiz-q outline-none w-full" style="font-size: 18pt; color: #1e3a8a; line-height: 1.6; font-family: 'Mali', cursive;">${ctx.q}</div></div><div class="flex flex-col gap-4 w-full"><div class="opt-item flex items-center p-3 rounded-lg gap-4 cursor-text outline-none hover:bg-blue-50 transition"><div class="text-blue-500 font-bold text-xl">⭕ A.</div><div class="flex-1 text-lg text-gray-800 font-medium" style="font-family: 'Mali', cursive;">ตัวเลือกที่ 1</div></div><div class="opt-item flex items-center p-3 rounded-lg gap-4 cursor-text outline-none hover:bg-blue-50 transition"><div class="text-blue-500 font-bold text-xl">⭕ B.</div><div class="flex-1 text-lg text-gray-800 font-medium" style="font-family: 'Mali', cursive;">ตัวเลือกที่ 2</div></div><div class="opt-item flex items-center p-3 rounded-lg gap-4 cursor-text outline-none hover:bg-blue-50 transition"><div class="text-blue-500 font-bold text-xl">⭕ C.</div><div class="flex-1 text-lg text-gray-800 font-medium" style="font-family: 'Mali', cursive;">ตัวเลือกที่ 3</div></div><div class="opt-item flex items-center p-3 rounded-lg gap-4 cursor-text outline-none hover:bg-blue-50 transition"><div class="text-blue-500 font-bold text-xl">⭕ D.</div><div class="flex-1 text-lg text-gray-800 font-medium" style="font-family: 'Mali', cursive;">ตัวเลือกที่ 4</div></div></div></div><div class="mt-4 flex flex-col w-full"><div id="ans_page_${ctx.uid}" class="quiz-ans-box outline-none w-full mt-1 text-blue-900 p-4 bg-blue-50/50 rounded-lg border border-blue-100" style="display:block; box-shadow: none !important; font-family: 'Mali', cursive;" contenteditable="true"><div class="text-base mb-2 text-red-500 font-bold">🎯 เฉลย: A. ตัวเลือกที่ 1</div><div class="text-sm leading-relaxed text-gray-800"><b>📝 อธิบายเพิ่มเติม:</b> เหตุผลคือ... <br><span class="text-blue-600"><b>🐶 Note:</b></span> ระวังโดนหลอกตรงนี้นะ!</div></div></div></div></div></div>`,
+                'content_note': (ctx) => {
+                    let bodyContent = ctx.content ? `<div class="mb-4"><span class="outline-none text-red-500 font-bold bg-yellow-100 px-2 rounded" style="font-family: 'Mali', cursive;" contenteditable="true">Topic: ${ctx.title}</span><div class="outline-none pl-4 py-1 my-2 text-blue-900" style="font-family: 'Mali', cursive;" contenteditable="true">${ctx.def}</div><div class="text-sm text-gray-700 mt-2 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true"><span class="text-orange-500 font-bold mr-1">🦊 Note:</span> ${ctx.easy}</div></div>` : '';
+                    return `<div class="a4-page relative group bg-[#fdfbf7] pattern-lines">${ctx.controls}<div class="absolute top-0 bottom-0 left-[40px] w-px bg-red-300 z-0"></div><div class="absolute top-0 bottom-0 left-[46px] w-px bg-red-300 opacity-50 z-0"></div><div class="page-header border-none pb-2 mb-2 ml-16 relative z-10 pt-2"><div class="flex flex-col w-full"><h3 class="text-2xl font-bold text-blue-800 tracking-tight leading-[32px] outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">${ctx.title}</h3></div></div><div class="flex-grow flex flex-col relative z-10 ml-16 pl-2"><div class="content-editable-area w-full h-full outline-none text-base text-gray-800 leading-[32px] overflow-y-auto cursor-text" style="font-family: 'Mali', cursive;" contenteditable="true" placeholder="คลิกเพื่อเริ่มจดเลคเชอร์...">${bodyContent}</div></div><div class="page-footer border-none pt-4 ml-16 relative z-10"><div class="w-full text-right pr-8"><span class="text-xs text-blue-400 font-medium outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">- ${ctx.randQ.en}</span></div></div></div>`;
+                },
+                'last_note': (ctx) => `<div class="a4-page flex flex-col items-center justify-center text-center bg-[#fdfbf7] pattern-lines relative group">${ctx.controls}<div class="absolute top-0 bottom-0 left-[40px] w-px bg-red-300 z-0"></div><div class="absolute top-0 bottom-0 left-[46px] w-px bg-red-300 opacity-50 z-0"></div><div class="bg-white p-10 rounded-sm shadow-md border border-gray-200 relative overflow-hidden max-w-md w-full z-10 transform rotate-1 ml-12"><div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-24 h-6 bg-red-200/50 shadow-sm transform -rotate-2"></div><h2 class="text-3xl font-bold text-blue-800 mb-6 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">สรุปก่อนสอบ! 🐶</h2><div class="space-y-4 text-left"><div class="flex items-start gap-3"><div class="text-red-500 font-bold text-xl mt-[-4px]">☐</div><div class="flex-1 text-lg text-gray-800 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">ทบทวนสูตรสำคัญ...</div></div><div class="flex items-start gap-3"><div class="text-red-500 font-bold text-xl mt-[-4px]">☐</div><div class="flex-1 text-lg text-gray-800 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">นอนให้พอ!</div></div></div><div class="mt-8 pt-4 border-t-2 border-dashed border-gray-300 text-center"><div class="text-lg font-bold text-orange-500 outline-none" style="font-family: 'Mali', cursive;" contenteditable="true">โชคดีนะชาวแก๊งค์ 🦊✨</div></div></div></div>`
+            },
+            blocks: {
+                'article': (uid) => `<div class="article-card"><span class="article-label outline-none" contenteditable="true">มาตรา / หัวข้อ</span><div class="article-text outline-none" contenteditable="true">"เนื้อหากฎหมาย หรือคำนิยามหลักที่ต้องอ้างอิง..."</div></div><br>`,
+                'fox-exp': (uid) => `<div class="fox-explanation"><span class="explanation-icon">🐾</span><span class="outline-none" contenteditable="true"><b>พี่จิ้งจอกสรุปให้:</b> อธิบายให้เข้าใจง่ายๆ ตรงนี้เลยครับ...</span></div><br>`,
+                'mastertricks': (uid) => `<div class="master-tricks"><div class="trick-header outline-none" contenteditable="true">✨ FOXHUNT Master Tricks</div><div class="trick-grid"><div class="trick-item outline-none" contenteditable="true"><b>🧠 Mnemonics</b>พิมพ์สูตรจำ...</div><div class="trick-item outline-none" contenteditable="true"><b>👾 Exam Trap</b>ระวังจุดหลอก...</div></div></div><br>`,
+                'quiz': (uid) => `<div class="quiz-section"><div class="quiz-card"><span class="quiz-q outline-none" contenteditable="true">1. พิมพ์คำถามทดสอบความเข้าใจที่นี่? <br><small style="color:#777;">(อ้างอิง: ข้อสอบปี...)</small></span><div class="quiz-opt outline-none" contenteditable="true"><div class="opt-item">ก. ตัวเลือกที่ 1</div><div class="opt-item">ข. ตัวเลือกที่ 2</div><div class="opt-item">ค. ตัวเลือกที่ 3</div><div class="opt-item">ง. ตัวเลือกที่ 4</div></div><button class="show-ans-btn" onclick="toggleAnswer('ans_${uid}', this)">👁️ ดูเฉลย</button><div id="ans_${uid}" class="quiz-ans-box outline-none" contenteditable="true">✅ <b>เฉลย ก. ตัวเลือกที่ 1</b><br><b>ทริกจิ้งจอก:</b> อธิบายเหตุผลที่นี่... ✨</div></div></div><br>`,
+                'summary': (uid) => `<div class="summary-box"><div class="summary-title outline-none" contenteditable="true">The Alpha Essentials 🌙</div><div class="summary-list outline-none" contenteditable="true"><div class="summary-point">1. <b>ใจความสำคัญ:</b> รายละเอียด...</div><div class="summary-point">2. <b>ใจความสำคัญ:</b> รายละเอียด...</div></div></div><br>`,
+                'timeline': (uid) => `<div class="relative border-l-4 border-orange-500 ml-3 pl-5 py-2 mb-4"><div class="absolute w-4 h-4 bg-yellow-400 border-4 border-white rounded-full -left-[10px] top-3 shadow-sm"></div><div class="font-bold text-gray-800 text-lg outline-none" contenteditable="true">จุดเริ่มต้น / ขั้นตอนที่ 1</div><div class="text-gray-600 text-sm mt-1 outline-none" contenteditable="true">อธิบายรายละเอียดเพิ่มเติมของขั้นตอนนี้...</div></div><div class="relative border-l-4 border-orange-500 ml-3 pl-5 py-2 mb-4"><div class="absolute w-4 h-4 bg-gray-300 border-4 border-white rounded-full -left-[10px] top-3 shadow-sm"></div><div class="font-bold text-gray-800 text-lg outline-none" contenteditable="true">ขั้นตอนที่ 2</div><div class="text-gray-600 text-sm mt-1 outline-none" contenteditable="true">อธิบายรายละเอียดเพิ่มเติมของขั้นตอนนี้...</div></div><br>`,
+                'compare': (uid) => `<div class="flex items-stretch gap-3 mb-4 bg-gray-50 p-4 rounded-2xl border border-gray-200"><div class="flex-1 bg-white p-4 rounded-xl shadow-sm border-t-4 border-blue-500"><div class="font-bold text-blue-700 text-center mb-2 outline-none" contenteditable="true">หัวข้อ A</div><ul class="text-sm text-gray-600 space-y-1 outline-none" contenteditable="true"><li>- ข้อดี/จุดเด่น 1</li><li>- ข้อดี/จุดเด่น 2</li></ul></div><div class="flex items-center justify-center font-black text-gray-400 italic text-xl px-1 select-none pointer-events-none">VS</div><div class="flex-1 bg-white p-4 rounded-xl shadow-sm border-t-4 border-orange-500"><div class="font-bold text-orange-700 text-center mb-2 outline-none" contenteditable="true">หัวข้อ B</div><ul class="text-sm text-gray-600 space-y-1 outline-none" contenteditable="true"><li>- ข้อดี/จุดเด่น 1</li><li>- ข้อดี/จุดเด่น 2</li></ul></div></div><br>`,
+                'checklist': (uid) => `<div class="bg-white border-2 border-green-100 rounded-xl p-5 shadow-sm mb-4"><div class="font-bold text-green-700 border-b border-green-100 pb-2 mb-3 flex items-center gap-2 outline-none" contenteditable="true"><span class="text-xl">☑️</span> Checklist สำคัญ (ต้องทำ/ต้องจำ!)</div><div class="space-y-2"><div class="flex items-start gap-2"><input type="checkbox" class="mt-1 w-4 h-4 accent-green-500 cursor-pointer"><div class="text-gray-700 text-sm outline-none flex-1" contenteditable="true">รายการที่ 1</div></div><div class="flex items-start gap-2"><input type="checkbox" class="mt-1 w-4 h-4 accent-green-500 cursor-pointer"><div class="text-gray-700 text-sm outline-none flex-1" contenteditable="true">รายการที่ 2</div></div><div class="flex items-start gap-2"><input type="checkbox" class="mt-1 w-4 h-4 accent-green-500 cursor-pointer"><div class="text-gray-700 text-sm outline-none flex-1" contenteditable="true">รายการที่ 3</div></div></div></div><br>`,
+                'trick': (uid) => `<div class="block-trick relative group"><div class="absolute top-2 right-2 opacity-20 text-4xl select-none pointer-events-none">🦊</div><div class="font-bold text-orange-700 mb-1 flex items-center gap-2"><span>🦊 FOX TRICK</span></div><div class="text-gray-800 outline-none" contenteditable="true">เนื้อหาทริก...</div></div><br>`,
+                'exam': (uid) => `<div class="block-exam"><div class="font-bold text-blue-800 mb-2 flex items-center gap-2"><span>🎯 EXAM DRILL</span></div><div class="font-bold mb-2 outline-none" contenteditable="true">โจทย์...</div><div class="pl-4 mb-2 space-y-1 outline-none" contenteditable="true"><div>ก. ...</div><div>ข. ...</div><div>ค. ...</div><div>ง. ...</div></div><div class="text-sm bg-white p-2 rounded border border-blue-100 text-gray-600"><span class="font-bold text-blue-600">เฉลย:</span> <span class="outline-none" contenteditable="true">...</span></div></div><br>`,
+                'def': (uid) => `<div class="block-def"><div class="font-bold text-slate-700 mb-1 flex items-center gap-2"><span class="text-blue-500">🎓</span> <span>DEFINITION</span></div><div class="text-gray-700 text-sm outline-none" contenteditable="true">นิยาม...</div></div><br>`,
+                'easy': (uid) => `<div class="block-easy"><div class="font-bold text-green-800 mb-1 flex items-center gap-2"><span>🟢 SUPER EASY</span></div><div class="text-green-700 font-medium outline-none" contenteditable="true">คำอธิบายง่ายๆ...</div></div><br>`,
+                'dashed': (uid) => `<div class="block-dashed"><div class="font-bold text-gray-500 mb-1 flex items-center gap-2"><span>✂️</span> <span>NOTE</span></div><div class="text-gray-700 text-sm outline-none" contenteditable="true">บันทึกเพิ่มเติม...</div></div><br>`,
+                'solid': (uid) => `<div class="block-solid"><div class="font-bold text-indigo-800 mb-1 flex items-center gap-2"><span>🎨</span> <span>CONCEPT</span></div><div class="text-indigo-900 text-sm outline-none" contenteditable="true">เนื้อหาเน้นๆ...</div></div><br>`,
+                'red': (uid) => `<div class="block-red"><div class="font-bold text-red-700 mb-1 flex items-center gap-2"><span>🚨</span> <span>WARNING</span></div><div class="text-red-800 text-sm outline-none" contenteditable="true">ระวัง...</div></div><br>`
+            },
+            layouts: {
+                '100': () => `<div class="w-full mb-4"><div class="layout-col w-full outline-none" contenteditable="true" placeholder="เนื้อหา..."></div></div>`,
+                '50-50': () => `<div class="grid grid-cols-2 gap-4 mb-4"><div class="layout-col outline-none" contenteditable="true" placeholder="ซ้าย"></div><div class="layout-col outline-none" contenteditable="true" placeholder="ขวา"></div></div>`,
+                '30-70': () => `<div class="grid grid-cols-12 gap-4 mb-4"><div class="col-span-4 layout-col outline-none" contenteditable="true" placeholder="30%"></div><div class="col-span-8 layout-col outline-none" contenteditable="true" placeholder="70%"></div></div>`,
+                '70-30': () => `<div class="grid grid-cols-12 gap-4 mb-4"><div class="col-span-8 layout-col outline-none" contenteditable="true" placeholder="70%"></div><div class="col-span-4 layout-col outline-none" contenteditable="true" placeholder="30%"></div></div>`
+            }
+        };
+
+        // ==========================================
+        // 3. SYSTEM STATE
+        // ==========================================
+        const historyStack = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 30; 
+        let selectedElement = null;
+        let isResizing = false;
+        let isDragging = false; 
+        let appScale = 1; 
+        let currentPaperFormat = [250, 250]; 
+        let currentPaperName = 'square';
+        let currentOrientation = 'portrait';
+        let zoomLevel = 1;
+        let isAutoZoom = true;
+        let dragStartX = 0, dragStartY = 0;
+        let initialLeft = 0, initialTop = 0;
+        let initialWidth = 0, initialHeight = 0;
+        let initialFontSize = 0;
+        let savedRange = null;
+
+        // ==========================================
+        // 4. CORE UI & INTERACTION LOGIC
+        // ==========================================
+        function toggleSidebar(e) {
+            if(e) e.stopPropagation();
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+        
+        function closeSidebarOnMobile(e) {
+            if (window.innerWidth <= 1024 && document.getElementById('sidebar').classList.contains('open')) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        function showDialog(msg, isConfirm = false, onOk = null) {
+            const dialog = document.getElementById('custom-dialog');
+            document.getElementById('dialog-msg').innerHTML = msg;
+            const btnCancel = document.getElementById('dialog-btn-cancel');
+            const btnOk = document.getElementById('dialog-btn-ok');
+            btnCancel.style.display = isConfirm ? 'block' : 'none';
+            btnCancel.onclick = function() { dialog.style.display = 'none'; };
+            btnOk.onclick = function() { dialog.style.display = 'none'; if(onOk) onOk(); };
+            dialog.style.display = 'flex';
+        }
+
+        function handleGlobalKey(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+            if (((e.ctrlKey || e.metaKey) && e.key === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) { e.preventDefault(); redo(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); exportProject(); }
+            if (e.key === 'Tab' && e.target.isContentEditable) { e.preventDefault(); saveState(); document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'); triggerAutoSave(); }
+        }
+
+        function handleBodyClick(event) {
+            if (!event.target.closest('#emoji-picker') && !event.target.closest('.sb-section')) {
+                document.getElementById('emoji-picker').style.display = 'none';
+            }
+            if (!event.target.closest('.smart-object') && !event.target.closest('.sidebar') && !event.target.closest('.show-ans-btn') && !event.target.closest('.zoom-controls')) {
+                 document.querySelectorAll('.smart-object').forEach(el => el.classList.remove('selected'));
+                 selectedElement = null;
+            }
+        }
+
+        document.addEventListener('selectionchange', () => {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                const container = range.commonAncestorContainer;
+                const element = container.nodeType === 1 ? container : container.parentElement;
+                if (element && element.closest('.content-editable-area')) { savedRange = range.cloneRange(); }
+            }
+        });
+
+        document.getElementById('fontNameSelect').addEventListener('change', function() { formatDoc('fontName', this.value); });
+        document.getElementById('fontSizeSelect').addEventListener('change', function() { formatDoc('fontSize', this.value); });
+
+        function zoomIn() { zoomLevel = Math.min(3.0, (isAutoZoom ? appScale : zoomLevel) + 0.1); isAutoZoom = false; applyZoom(); }
+        function zoomOut() { zoomLevel = Math.max(0.2, (isAutoZoom ? appScale : zoomLevel) - 0.1); isAutoZoom = false; applyZoom(); }
+        function fitZoom() { isAutoZoom = true; applyZoom(); }
+
+        function applyZoom() {
+            const container = document.getElementById('app-content');
+            if(!container) return;
+            const screenWidth = window.innerWidth;
+            const root = getComputedStyle(document.documentElement);
+            const pageWidthStr = root.getPropertyValue('--page-width').trim();
+            const pageWidthMM = parseFloat(pageWidthStr) || 250;
+            const targetWidthPx = pageWidthMM * 3.78; 
+            
+            const sidebarWidth = screenWidth > 1024 ? 320 : 0;
+            const availableWidth = screenWidth - sidebarWidth;
+            const paddingHorizontal = 40; 
+            
+            if (isAutoZoom) {
+                if (availableWidth < targetWidthPx + paddingHorizontal) {
+                    appScale = Math.max(0.2, (availableWidth - paddingHorizontal) / targetWidthPx); 
+                } else { appScale = 1; }
+                document.getElementById('zoom-display').innerText = 'Auto';
+            } else {
+                appScale = zoomLevel; document.getElementById('zoom-display').innerText = Math.round(appScale * 100) + '%';
+            }
+            
+            container.style.transform = `scale(${appScale})`;
+            container.style.marginBottom = `-${(1 - appScale) * container.offsetHeight}px`;
+        }
+
+        function setOrientation(orient) {
+            if (currentOrientation === orient) return;
+            saveState(); currentOrientation = orient;
+            document.getElementById('btn-portrait').classList.toggle('active', orient === 'portrait');
+            document.getElementById('btn-landscape').classList.toggle('active', orient === 'landscape');
+            setPaperSize(currentPaperName);
+        }
+
+        function setPaperSize(size) {
+            saveState(); let root = document.documentElement; let displayTxt = '(1:1)'; let width, height;
+            switch(size) {
+                case 'a4': width = 210; height = 297; displayTxt = '(A4)'; break;
+                case 'a5': width = 148; height = 210; displayTxt = '(A5)'; break;
+                case 'b5': width = 176; height = 250; displayTxt = '(B5)'; break;
+                case 'letter': width = 215.9; height = 279.4; displayTxt = '(Letter)'; break;
+                case 'square': default: width = 250; height = 250; displayTxt = '(1:1)'; break;
+            }
+
+            if (currentOrientation === 'landscape' && size !== 'square') { let temp = width; width = height; height = temp; displayTxt += ' แนวนอน'; } 
+            else if (currentOrientation === 'portrait' && size !== 'square') { displayTxt += ' แนวตั้ง'; }
+
+            root.style.setProperty('--page-width', width + 'mm'); root.style.setProperty('--page-height', height + 'mm');
+            currentPaperFormat = [width, height]; currentPaperName = size;
+            document.getElementById('paper-display').innerText = displayTxt; document.getElementById('paper-select').value = size;
+            
+            let printStyle = document.getElementById('dynamic-print-style');
+            if (!printStyle) { printStyle = document.createElement('style'); printStyle.id = 'dynamic-print-style'; document.head.appendChild(printStyle); }
+            printStyle.innerHTML = `@media print { @page { size: ${width}mm ${height}mm; margin: 0; } .a4-page { width: ${width}mm !important; height: ${height}mm !important; } .page-separator { width: ${width}mm !important; height: ${height}mm !important; } }`;
+            
+            applyZoom(); triggerAutoSave();
+        }
+
+        function makeSmartObject(element) {
+            if (element.dataset.isSmart) return;
+            element.dataset.isSmart = 'true';
+
+            const img = element.querySelector('img');
+            if(img) img.addEventListener('dragstart', (e) => e.preventDefault());
+            
+            element.addEventListener('mousedown', handleStart);
+            element.addEventListener('touchstart', handleStart, {passive: false});
+
+            function handleStart(e) {
+                if (e.target.classList.contains('delete-handle')) { saveState(); element.remove(); triggerAutoSave(); return; }
+                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                selectedElement = element;
+                document.querySelectorAll('.smart-object').forEach(el => el.classList.remove('selected'));
+                element.classList.add('selected');
+
+                if (e.target.classList.contains('resize-handle')) {
+                    isResizing = true; dragStartX = clientX; dragStartY = clientY; initialWidth = element.offsetWidth; initialHeight = element.offsetHeight; initialFontSize = parseFloat(window.getComputedStyle(element).fontSize);
+                } else {
+                    isResizing = false; isDragging = true; dragStartX = clientX; dragStartY = clientY; initialLeft = element.offsetLeft; initialTop = element.offsetTop;
+                    element.classList.add('is-moving'); document.body.classList.add('is-dragging');
+                }
+                e.stopPropagation();
+            }
+        }
+
+        document.addEventListener('mousemove', handleMove); document.addEventListener('touchmove', handleMove, {passive: false});
+        function handleMove(e) {
+            if (!selectedElement) return;
+            if (!isDragging && !isResizing) return; 
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            const dx = (clientX - dragStartX) / appScale;
+            const dy = (clientY - dragStartY) / appScale;
+
+            if (isResizing) {
+                if (selectedElement.querySelector('img')) { selectedElement.style.width = Math.max(50, initialWidth + dx) + 'px'; selectedElement.style.height = 'auto'; } 
+                else { const newSize = Math.max(10, initialFontSize + (dx / 2)); selectedElement.style.fontSize = newSize + 'px'; }
+            } else {
+                const pageBounds = selectedElement.closest('.a4-page').getBoundingClientRect();
+                let newX = initialLeft + dx; let newY = initialTop + dy;
+                const minX = -selectedElement.offsetWidth / 2; const minY = -selectedElement.offsetHeight / 2;
+                const maxX = (pageBounds.width / appScale) - (selectedElement.offsetWidth / 2); const maxY = (pageBounds.height / appScale) - (selectedElement.offsetHeight / 2);
+                newX = Math.max(minX, Math.min(newX, maxX)); newY = Math.max(minY, Math.min(newY, maxY));
+                selectedElement.style.left = newX + 'px'; selectedElement.style.top = newY + 'px';
+            }
+            if(e.cancelable) e.preventDefault();
+        }
+
+        document.addEventListener('mouseup', handleEnd); document.addEventListener('touchend', handleEnd);
+        document.addEventListener('mouseleave', handleEnd); window.addEventListener('blur', handleEnd);
+        function handleEnd(e) {
+            if (selectedElement) {
+                selectedElement.classList.remove('is-moving'); document.body.classList.remove('is-dragging');
+                if (isDragging || isResizing) { saveState(); triggerAutoSave(); }
+                isDragging = false; isResizing = false;
+            }
+        }
+
+        function getVisiblePage() {
+            const pages = document.querySelectorAll('.a4-page');
+            if(!pages.length) return null;
+            let bestPage = pages[0]; let minDistance = Infinity;
+            pages.forEach(page => {
+                const rect = page.getBoundingClientRect();
+                const pageCenterY = rect.top + (rect.height / 2);
+                const viewportCenterY = window.innerHeight / 2;
+                const distance = Math.abs(pageCenterY - viewportCenterY);
+                if (distance < minDistance) { minDistance = distance; bestPage = page; }
+            });
+            return bestPage;
+        }
+
+        function formatDoc(cmd, value = null) { 
+            restoreSelection(); 
+            if(savedRange) { saveState(); document.execCommand(cmd, false, value); triggerAutoSave(); } 
+            else { showDialog("กรุณาคลิกเลือกหรือคลุมดำข้อความที่ต้องการก่อนครับ"); }
+        }
+        
+        function restoreSelection() { if (savedRange) { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(savedRange); } }
+
+        function resizeSelectedImagePreview(val) {
+             const selected = document.querySelector('.smart-object.selected');
+             if(selected) { 
+                 if(selected.querySelector('img')) selected.style.width = (val * 8) + 'px'; 
+                 else selected.style.fontSize = (val * 3) + 'px';
+             } 
+        }
+        function resizeSelectedImageEnd(val) {
+             const selected = document.querySelector('.smart-object.selected');
+             if(selected) { 
+                 saveState(); 
+                 if(selected.querySelector('img')) selected.style.width = (val * 8) + 'px'; 
+                 else selected.style.fontSize = (val * 3) + 'px';
+                 triggerAutoSave(); 
+             } 
+             else { showDialog("กรุณาคลิกเลือกรูปภาพหรือสติกเกอร์ที่ต้องการย่อขยายก่อนครับ"); }
+        }
+
+        function triggerImageUpload() { document.getElementById('img-upload').click(); }
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (!file.type.match(/image.*/)) return;
+                const reader = new FileReader();
+                reader.onload = function(readerEvent) {
+                    const image = new Image();
+                    image.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const max_size = 800; let w = image.width; let h = image.height;
+                        if (w > h) { if (w > max_size) { h *= max_size / w; w = max_size; } } else { if (h > max_size) { w *= max_size / h; h = max_size; } }
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0, w, h);
+                        insertFloatingImage(canvas.toDataURL('image/jpeg', 0.8));
+                    }
+                    image.src = readerEvent.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+            event.target.value = ''; 
+        }
+
+        function insertMath() { insertContent('$$E = mc^2$$'); }
+
+        async function exportToPNG() {
+            const pages = document.querySelectorAll('.a4-page'); const total = pages.length;
+            const toast = document.getElementById('auto-save-toast'); toast.innerHTML = '<i class="ph ph-spinner animate-spin"></i> กำลังเตรียมไฟล์ภาพ...'; toast.style.opacity = '1';
+            document.querySelectorAll('.smart-object').forEach(el => el.classList.remove('selected')); document.body.classList.add('is-exporting');
+            const container = document.getElementById('app-content'); 
+            const oldMargin = container.style.marginBottom;
+            container.style.transform = 'scale(1)';
+            container.style.transformOrigin = 'top left';
+            container.style.marginBottom = '0';
+            document.body.style.width = '3000px';
+            document.body.style.minHeight = '3000px';
+            document.body.style.overflow = 'hidden';
+            window.scrollTo(0, 0);
+            
+            await new Promise(r => setTimeout(r, 600));
+
+            for (let i = 0; i < total; i++) {
+                const page = pages[i];
+                try {
+                    const canvas = await html2canvas(page, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: page.offsetWidth, height: page.offsetHeight, windowWidth: 3000, windowHeight: 3000 });
+                    const link = document.createElement('a'); link.download = `Foxhunt_Page_${i + 1}.png`; link.href = canvas.toDataURL('image/png', 1.0); link.click();
+                } catch (err) { console.error("PNG Export Failed:", err); showDialog("เกิดข้อผิดพลาดในการบันทึกภาพหน้า " + (i+1)); }
+            }
+            document.body.style.width = ''; document.body.style.minHeight = ''; document.body.style.overflow = '';
+            container.style.transformOrigin = 'top center'; container.style.marginBottom = oldMargin;
+            document.body.classList.remove('is-exporting'); applyZoom(); 
+            toast.innerHTML = '<i class="ph ph-check-circle text-green-400"></i> บันทึกภาพเรียบร้อย!'; setTimeout(() => toast.style.opacity = '0', 2000); setTimeout(() => toast.innerHTML = '<i class="ph ph-check-circle text-green-400"></i> Auto-saved', 2500); 
+        }
+
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf; const pages = document.querySelectorAll('.a4-page'); 
+            const doc = new jsPDF({ orientation: currentOrientation, unit: 'mm', format: currentPaperFormat });
+            const toast = document.getElementById('auto-save-toast'); toast.innerHTML = '<i class="ph ph-spinner animate-spin"></i> กำลังสร้างไฟล์ PDF...'; toast.style.opacity = '1';
+            document.querySelectorAll('.smart-object').forEach(el => el.classList.remove('selected')); document.body.classList.add('is-exporting');
+            const container = document.getElementById('app-content'); const oldMargin = container.style.marginBottom;
+            container.style.transform = 'scale(1)'; container.style.transformOrigin = 'top left'; container.style.marginBottom = '0';
+            document.body.style.width = '3000px'; document.body.style.minHeight = '3000px'; document.body.style.overflow = 'hidden';
+            window.scrollTo(0, 0);
+            
+            await new Promise(r => setTimeout(r, 600));
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                try {
+                    const canvas = await html2canvas(page, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: page.offsetWidth, height: page.offsetHeight, windowWidth: 3000, windowHeight: 3000 });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    if (i > 0) doc.addPage(currentPaperFormat, currentOrientation); doc.addImage(imgData, 'JPEG', 0, 0, currentPaperFormat[0], currentPaperFormat[1]);
+                } catch (err) { console.error("PDF Export Failed:", err); }
+            }
+            document.body.style.width = ''; document.body.style.minHeight = ''; document.body.style.overflow = '';
+            container.style.transformOrigin = 'top center'; container.style.marginBottom = oldMargin;
+            document.body.classList.remove('is-exporting'); applyZoom(); doc.save('Foxhunt_Note.pdf');
+            toast.innerHTML = '<i class="ph ph-check-circle text-green-400"></i> บันทึก PDF เรียบร้อย!'; setTimeout(() => toast.style.opacity = '0', 2000); setTimeout(() => toast.innerHTML = '<i class="ph ph-check-circle text-green-400"></i> Auto-saved', 2500);
+        }
+
+        function exportProject() {
+            saveState(); 
+            const projectData = { version: "2.5_Refactored", timestamp: new Date().toISOString(), content: document.getElementById('app-content').innerHTML, settings: userKeywords, paperSize: currentPaperName, orientation: currentOrientation };
+            const blob = new Blob([JSON.stringify(projectData)], { type: "application/json" });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
+            const date = new Date(); a.download = `Foxhunt_${date.getFullYear()}${date.getMonth()+1}${date.getDate()}_${date.getHours()}${date.getMinutes()}.fox`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function importProject(event) {
+            const file = event.target.files[0]; if (!file) return;
+            showDialog("การโหลดโปรเจกต์จะเขียนทับงานปัจจุบัน ยืนยันไหมครับ?", true, () => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.content) {
+                            saveState(); document.getElementById('app-content').innerHTML = data.content;
+                            if (data.settings) {
+                                userKeywords = data.settings; document.getElementById('kw-trick').value = userKeywords.trick || ""; document.getElementById('kw-exam').value = userKeywords.exam || ""; document.getElementById('kw-def').value = userKeywords.def || ""; document.getElementById('kw-easy').value = userKeywords.easy || ""; document.getElementById('kw-dashed').value = userKeywords.dashed || ""; document.getElementById('kw-solid').value = userKeywords.solid || ""; document.getElementById('kw-red').value = userKeywords.red || "";
+                            }
+                            if (data.orientation) {
+                                currentOrientation = data.orientation;
+                                document.getElementById('btn-portrait').classList.toggle('active', currentOrientation === 'portrait');
+                                document.getElementById('btn-landscape').classList.toggle('active', currentOrientation === 'landscape');
+                            }
+                            document.querySelectorAll('.smart-object').forEach(el => delete el.dataset.isSmart);
+                            setPaperSize(data.paperSize || 'square'); rebindSmartObjects(); updateMathJax(); triggerAutoSave();
+                            showDialog("โหลดโปรเจกต์เรียบร้อย! 🦊");
+                        } else { showDialog("รูปแบบไฟล์ไม่ถูกต้องครับ"); }
+                    } catch (err) { console.error(err); showDialog("เกิดข้อผิดพลาดในการอ่านไฟล์"); }
+                }; reader.readAsText(file);
+            });
+            event.target.value = ''; 
+        }
+
+        function saveState() {
+            const container = document.getElementById('app-content'); if(!container) return;
+            if (historyIndex < historyStack.length - 1) historyStack.splice(historyIndex + 1);
+            const currentHTML = container.innerHTML;
+            if(historyStack.length === 0 || historyStack[historyStack.length - 1] !== currentHTML) { historyStack.push(currentHTML); if (historyStack.length > MAX_HISTORY) historyStack.shift(); else historyIndex++; }
+        }
+
+        function triggerAutoSave() {
+            try {
+                localStorage.setItem('foxhunt_autosave', document.getElementById('app-content').innerHTML); 
+                localStorage.setItem('foxhunt_paper_size', currentPaperName);
+                localStorage.setItem('foxhunt_paper_orient', currentOrientation);
+                const toast = document.getElementById('auto-save-toast'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000);
+            } catch (e) {
+                if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                    showDialog("⚠️ พื้นที่จัดเก็บชั่วคราว (Cache) เต็ม! แนะนำให้กดปุ่มเซฟโปรเจกต์ (รูปแผ่นดิสก์) เพื่อโหลดเป็นไฟล์ .fox เก็บไว้ และลดจำนวนรูปภาพขนาดใหญ่ลงครับ");
+                }
+            }
+        }
+
+        function loadAutoSave() {
+            const saved = localStorage.getItem('foxhunt_autosave');
+            if (saved) {
+                document.getElementById('app-content').innerHTML = saved.replace(/width:\s*250mm\s*!important/g, 'width: var(--page-width) !important').replace(/height:\s*250mm\s*!important/g, 'height: var(--page-height) !important');
+                document.querySelectorAll('.smart-object').forEach(el => delete el.dataset.isSmart);
+                rebindSmartObjects(); updateMathJax();
+                
+                const savedOrient = localStorage.getItem('foxhunt_paper_orient');
+                if (savedOrient) {
+                    currentOrientation = savedOrient;
+                    document.getElementById('btn-portrait').classList.toggle('active', currentOrientation === 'portrait');
+                    document.getElementById('btn-landscape').classList.toggle('active', currentOrientation === 'landscape');
+                }
+                setPaperSize(localStorage.getItem('foxhunt_paper_size') || 'square'); 
+                return true;
+            }
+            return false;
+        }
+
+        function updateMathJax() {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise().catch(err => console.log('MathJax Error:', err.message));
+            }
+        }
+
+        function undo() { if (historyIndex > 0) { historyIndex--; document.getElementById('app-content').innerHTML = historyStack[historyIndex]; document.querySelectorAll('.smart-object').forEach(el => delete el.dataset.isSmart); rebindSmartObjects(); updateMathJax(); triggerAutoSave(); applyZoom(); } }
+        function redo() { if (historyIndex < historyStack.length - 1) { historyIndex++; document.getElementById('app-content').innerHTML = historyStack[historyIndex]; document.querySelectorAll('.smart-object').forEach(el => delete el.dataset.isSmart); rebindSmartObjects(); updateMathJax(); triggerAutoSave(); applyZoom(); } }
+        function rebindSmartObjects() { document.querySelectorAll('.smart-object').forEach(el => makeSmartObject(el)); }
+
+        function getPageHTML(page, index, content = null) {
+            const pageControls = `<div class="page-controls no-print"><button class="add-page-btn" onmousedown="event.preventDefault();" onclick="addPageAfter(this, '${page.type}')" title="เพิ่มหน้าใหม่ต่อจากหน้านี้"><i class="ph ph-plus"></i></button><button class="remove-page-btn" onmousedown="event.preventDefault();" onclick="removePage(this)" title="ลบหน้านี้"><i class="ph ph-trash"></i></button></div>`;
+            
+            let title = 'พิมพ์ชื่อเรื่อง...'; let def = 'พิมพ์นิยาม...'; let easy = 'พิมพ์คำอธิบาย...'; let trick = 'พิมพ์ทริก...'; let q = 'พิมพ์โจทย์...'; let choices = `<div>ก. ...</div><div>ข. ...</div><div>ค. ...</div><div>ง. ...</div>`; let ans = '...';
+            if (content) { title = content.title || title; def = content.full || def; easy = content.easy || (content.super || easy); trick = content.fox || trick; q = content.q || q; if(content.choices) choices = content.choices.map(c => `<div>${c}</div>`).join(''); ans = content.step || ans; }
+
+            const ctx = {
+                controls: pageControls, title: title, def: def, easy: easy, q: q,
+                uid: Date.now(), randQ: foxQuotes[Math.floor(Math.random() * foxQuotes.length)], content: content
+            };
+
+            const templateFn = UI_TEMPLATES.pages[page.type] || UI_TEMPLATES.pages['blank'];
+            return templateFn(ctx);
+        }
+
+        function addPage(t, d=null) { saveState(); const w = document.createElement('div'); w.innerHTML = getPageHTML({type: t, data: d}, 0, d); document.getElementById('app-content').appendChild(w.firstChild); setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); rebindSmartObjects(); updateMathJax(); triggerAutoSave(); applyZoom(); }
+        function addPageAfter(btn, t, d=null) { saveState(); const currentPage = btn.closest('.a4-page'); const w = document.createElement('div'); w.innerHTML = getPageHTML({type: t, data: d}, 0, d); currentPage.after(w.firstChild); rebindSmartObjects(); updateMathJax(); triggerAutoSave(); applyZoom(); }
+        function removePage(btn) { if (document.querySelectorAll('.a4-page').length <= 1) { showDialog('ต้องมีอย่างน้อย 1 หน้ากระดาษครับ!'); return; } showDialog('ยืนยันที่จะลบหน้านี้?', true, () => { saveState(); btn.closest('.a4-page').remove(); triggerAutoSave(); applyZoom(); }); }
+        function removeVisiblePage() {
+            if (document.querySelectorAll('.a4-page').length <= 1) { showDialog('ต้องมีอย่างน้อย 1 หน้ากระดาษครับ!'); return; }
+            showDialog('ยืนยันที่จะลบหน้าที่กำลังดูอยู่นี้ใช่ไหม?', true, () => { saveState(); const page = getVisiblePage(); if(page) page.remove(); triggerAutoSave(); applyZoom(); });
+        }
+        function setPagePattern(pattern) { saveState(); const page = getVisiblePage(); if(!page) return; page.classList.remove('pattern-lines', 'pattern-grid', 'pattern-dots'); if(pattern !== 'blank') page.classList.add('pattern-' + pattern); triggerAutoSave(); }
+        function setPageMargin(margin) { saveState(); const page = getVisiblePage(); if(!page) return; page.classList.remove('margin-narrow', 'margin-normal', 'margin-wide'); page.classList.add('margin-' + margin); triggerAutoSave(); }
+
+        function insertLayout(t) { 
+            saveState(); let h = ''; 
+            const templateFn = UI_TEMPLATES.layouts[t];
+            if(templateFn) h = templateFn();
+            insertContent(h); 
+        }
+        
+        function insertBlock(t) { 
+            saveState(); let h = ''; let uid = Date.now(); 
+            const templateFn = UI_TEMPLATES.blocks[t];
+            if(templateFn) h = templateFn(uid);
+            insertContent(h);
+        }
+
+        function insertFloatingImage(src) { 
+            const t = getVisiblePage(); const w = document.createElement('div'); w.className = 'smart-object selected'; 
+            w.style.top = (20 + Math.random()*10) + '%'; w.style.left = (35 + Math.random()*10) + '%'; w.style.width = '200px'; 
+            w.innerHTML = `<img src="${src}" class="w-full h-auto rounded shadow-sm border border-gray-200 pointer-events-none"><div class="controls"><div class="delete-handle">✕</div><div class="resize-handle"></div></div>`; 
+            t.appendChild(w); makeSmartObject(w); saveState(); triggerAutoSave(); 
+        }
+        
+        function insertFloatingEmoji(e) { 
+            const t = getVisiblePage(); const w = document.createElement('div'); w.className = 'smart-object selected text-6xl'; 
+            w.style.top = (30 + Math.random()*15) + '%'; w.style.left = (40 + Math.random()*15) + '%'; 
+            w.innerHTML = `<div class="emoji-content pointer-events-none">${e}</div><div class="controls"><div class="delete-handle">✕</div><div class="resize-handle"></div></div>`; 
+            t.appendChild(w); makeSmartObject(w); saveState(); triggerAutoSave(); 
+        }
+        function insertEmoji(e) { saveState(); insertFloatingEmoji(e); document.getElementById('emoji-picker').style.display = 'none'; }
+        
+        function insertContent(h) {
+            if (!window.getSelection().rangeCount && savedRange) { restoreSelection(); }
+            const s = window.getSelection(); let range;
+            if (s.rangeCount > 0) {
+                let c = s.getRangeAt(0).commonAncestorContainer; if (c.nodeType === 3) c = c.parentNode; 
+                if (c.closest('.content-editable-area') || c.closest('.layout-col') || c.closest('.article-text') || c.closest('.fox-explanation') || c.closest('.quiz-ans-box') || c.closest('.summary-list')) { range = s.getRangeAt(0); }
+            }
+            if (!range) {
+                const visiblePage = getVisiblePage(); const contentArea = visiblePage.querySelector('.content-editable-area');
+                if (contentArea) { contentArea.focus(); range = document.createRange(); range.selectNodeContents(contentArea); range.collapse(false); s.removeAllRanges(); s.addRange(range); savedRange = range.cloneRange(); } 
+                else { showDialog('กรุณาคลิกเลือกพื้นที่ในหน้ากระดาษก่อนแทรกเนื้อหานะครับ'); return; }
+            }
+            if (range) {
+                const t = document.createElement('div'); t.innerHTML = h; range.deleteContents();
+                const f = document.createDocumentFragment(); let l; while (t.firstChild) { l = t.firstChild; f.appendChild(l); }
+                range.insertNode(f); if (l) { range.setStartAfter(l); range.collapse(true); s.removeAllRanges(); s.addRange(range); savedRange = range.cloneRange(); }
+                saveState(); updateMathJax(); triggerAutoSave(); applyZoom();
+            }
+        }
+
+        function toggleEmojiPicker(e) { e.stopPropagation(); document.getElementById('emoji-picker').style.display = document.getElementById('emoji-picker').style.display==='flex'?'none':'flex'; }
+        
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function saveKeywords() {
+            userKeywords.trick = document.getElementById('kw-trick').value; userKeywords.exam = document.getElementById('kw-exam').value; userKeywords.def = document.getElementById('kw-def').value; userKeywords.easy = document.getElementById('kw-easy').value; userKeywords.dashed = document.getElementById('kw-dashed').value; userKeywords.solid = document.getElementById('kw-solid').value; userKeywords.red = document.getElementById('kw-red').value;
+            closeModal('settings-modal'); showDialog("บันทึกการตั้งค่าเรียบร้อย!");
+        }
+        
+        function processSmartImport() {
+            const input = document.getElementById('json-input').value.trim(); if (!input) return;
+            try {
+                let data; try { data = JSON.parse(input); } catch(e) { throw new Error("Invalid JSON"); }
+                if (Array.isArray(data)) { 
+                    showDialog("ล้างหน้าเดิมและสร้างใหม่?", true, () => {
+                        saveState(); document.getElementById('app-content').innerHTML = ''; 
+                        let html = getPageHTML({type:'cover'},0) + getPageHTML({type:'preface'},1) + getPageHTML({type:'separator'},2);
+                        data.forEach(item => html += getPageHTML({ type: 'content', data: item },0, item));
+                        html += getPageHTML({type:'last'},3);
+                        document.getElementById('app-content').innerHTML = html; closeModal('json-modal'); rebindSmartObjects(); triggerAutoSave(); applyZoom();
+                    }); return; 
+                }
+            } catch (e) {}
+            const lines = input.split('\n'); let title = "บทเรียนใหม่"; if (lines.length>0 && lines[0].length<100) title = lines[0].trim();
+            let formatted = smartFormatText(input); saveState(); const wrapper = document.createElement('div'); wrapper.innerHTML = getPageHTML({type:'content'}, 0);
+            const newPage = wrapper.firstChild; const t = newPage.querySelector('.page-header h3'); if(t && title!=="บทเรียนใหม่") t.innerText = title; 
+            const c = newPage.querySelector('.content-editable-area'); if(c) { c.innerHTML = formatted; }
+            document.getElementById('app-content').appendChild(newPage);
+            closeModal('json-modal'); showDialog("Import เรียบร้อย!"); triggerAutoSave(); applyZoom();
+        }
+        
+        function processAIGenerate() {
+            const input = document.getElementById('ai-input').value.trim();
+            if (!input) { showDialog("กรุณาใส่ข้อความก่อนครับ!"); return; }
+            
+            const lines = input.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            let title = lines.length > 0 ? lines[0] : "AI Infographic";
+            let subtitle = lines.length > 1 && lines[1].length < 100 ? lines[1] : "สรุปสาระสำคัญอัตโนมัติ";
+            let contentLines = lines.length > 2 ? lines.slice(2) : (lines.length > 1 ? lines.slice(1) : ["เพิ่มรายละเอียดเพิ่มเติมที่นี่..."]);
+
+            const pageControls = `<div class="page-controls no-print"><button class="add-page-btn" onclick="addPageAfter(this, 'content')" title="เพิ่มหน้าใหม่ต่อจากหน้านี้"><i class="ph ph-plus"></i></button><button class="remove-page-btn" onclick="removePage(this)" title="ลบหน้านี้"><i class="ph ph-trash"></i></button></div>`;
+            
+            let html = `<div class="a4-page relative group flex flex-col" style="background-color: #FCF9F5;">${pageControls}`;
+            html += `<div class="relative bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-500 text-white p-8 rounded-b-[40px] shadow-lg mb-8 outline-none" contenteditable="true" style="margin: -10mm -10mm 20px -10mm;"><div class="absolute right-8 top-8 text-8xl opacity-20 pointer-events-none select-none">🦊</div><h1 class="text-4xl font-black mb-3 tracking-wide" style="font-family: var(--font-heading);">${title}</h1><h2 class="text-xl font-medium opacity-90">${subtitle}</h2></div>`;
+            html += `<div class="flex-grow flex flex-col gap-6 px-4 content-editable-area outline-none cursor-text" contenteditable="true">`;
+            
+            let gridLimit = Math.min(4, contentLines.length);
+            if(gridLimit > 0) {
+                html += `<div class="grid grid-cols-2 gap-5">`;
+                const icons = ['🦊', '🎯', '🔥', '✨'];
+                for(let i=0; i<gridLimit; i++){
+                    let cleanText = contentLines[i].replace(/^[-•*]|\d+\.\s*/, '').trim();
+                    html += `<div class="bg-white p-5 rounded-2xl border border-orange-100 shadow-sm border-l-4 border-l-orange-500 hover:shadow-md transition"><div class="text-2xl mb-3">${icons[i%4]}</div><div class="text-sm text-gray-800 font-medium leading-relaxed">${cleanText}</div></div>`;
+                }
+                html += `</div>`;
+            }
+            
+            if(contentLines.length > 4) {
+                let rest = contentLines.slice(4);
+                html += `<div class="bg-white rounded-2xl border border-orange-200 shadow-sm p-6 mt-2 relative overflow-hidden"><div class="absolute right-0 top-0 w-2 h-full bg-orange-400"></div><h3 class="text-lg font-bold text-orange-900 mb-4 flex items-center gap-2"><i class="ph ph-list-dashes"></i> ประเด็นเพิ่มเติม</h3><ul class="space-y-3">`;
+                rest.forEach(line => {
+                    let cleanText = line.replace(/^[-•*]|\d+\.\s*/, '').trim();
+                    html += `<li class="flex items-start gap-3 text-sm text-gray-700"><span class="text-orange-500 mt-0.5">🐾</span> <span>${cleanText}</span></li>`;
+                });
+                html += `</ul></div>`;
+            }
+            html += `</div>`;
+            html += `<div class="mt-auto pt-6 pb-2 text-center border-t border-orange-200" contenteditable="true"><span class="text-3xl mb-2 inline-block">🦊</span><p class="text-[11px] font-bold text-orange-600 tracking-wider uppercase">Auto-Generated by Foxhunt AI</p></div></div>`;
+
+            saveState(); 
+            const w = document.createElement('div'); w.innerHTML = html; document.getElementById('app-content').appendChild(w.firstChild); 
+            setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); 
+            closeModal('ai-modal'); document.getElementById('ai-input').value = '';
+            rebindSmartObjects(); triggerAutoSave(); applyZoom();
+            showDialog("✨ AI สร้างหน้า Infographic (ธีมจิ้งจอก) อัตโนมัติเรียบร้อย!");
+        }
+
+        function smartFormatText(text) {
+            const blocks = text.split(/\n\s*\n/); let html = ''; let gridBuffer = []; 
+            const flush = () => { if (gridBuffer.length) { if (gridBuffer.length===1) html+=gridBuffer[0]; else for(let i=0;i<gridBuffer.length;i+=2) html+= i+1<gridBuffer.length ? `<div class="grid grid-cols-2 gap-4 mb-4"><div>${gridBuffer[i]}</div><div>${gridBuffer[i+1]}</div></div>` : gridBuffer[i]; gridBuffer=[]; } };
+            const getRegex = (k) => new RegExp(`^(${userKeywords[k].replace(/,/g, '|')})`, 'i');
+            blocks.forEach((b, i) => {
+                b = b.trim(); if(!b) return; if(i===0 && b.length<100 && !b.includes('\n')) return; let c = b;
+                if (getRegex('trick').test(b) || b.includes('🦊')) { flush(); c=b.replace(getRegex('trick'),'').replace(/^[:\s]+/,'').trim(); html+=`<div class="fox-explanation"><span class="explanation-icon">🐾</span><b>Trick:</b> ${c}</div>`; }
+                else if (getRegex('exam').test(b)) { flush(); c=b.replace(getRegex('exam'),'').replace(/^[:\s]+/,'').trim(); let uid = Date.now() + i; html+=`<div class="quiz-card"><span class="quiz-q">${c.replace(/\n/g,'<br>')}</span><button class="show-ans-btn" onclick="toggleAnswer('ans_${uid}', this)">👁️ ดูเฉลย</button><div id="ans_${uid}" class="quiz-ans-box" contenteditable="true"><b>เฉลย:</b> ...</div></div>`; }
+                else if (getRegex('def').test(b)) { c=b.replace(getRegex('def'),'').replace(/^[:\s]+/,'').trim(); html+=`<div class="article-card"><span class="article-label">นิยาม</span><div class="article-text">${c}</div></div>`; }
+                else if (getRegex('easy').test(b)) { c=b.replace(getRegex('easy'),'').replace(/^[:\s]+/,'').trim(); gridBuffer.push(`<div class="block-easy"><div class="font-bold text-green-800 mb-1 flex items-center gap-2"><span>🟢 SUPER EASY</span></div><div class="text-green-700 font-medium text-sm">${c}</div></div>`); }
+                else if (getRegex('dashed').test(b)) { flush(); c=b.replace(getRegex('dashed'),'').replace(/^[:\s]+/,'').trim(); html+=`<div class="block-dashed"><div class="font-bold text-gray-500 mb-1 flex items-center gap-2"><span>✂️</span> <span>NOTE</span></div><div class="text-gray-700 text-sm">${c}</div></div>`; }
+                else if (getRegex('solid').test(b)) { flush(); c=b.replace(getRegex('solid'),'').replace(/^[:\s]+/,'').trim(); html+=`<div class="block-solid"><div class="font-bold text-indigo-800 mb-1 flex items-center gap-2"><span>🎨</span> <span>CONCEPT</span></div><div class="text-indigo-900 text-sm">${c}</div></div>`; }
+                else if (getRegex('red').test(b)) { flush(); c=b.replace(getRegex('red'),'').replace(/^[:\s]+/,'').trim(); html+=`<div class="block-red"><div class="font-bold text-red-700 mb-1 flex items-center gap-2"><span>🚨</span> <span>WARNING</span></div><div class="text-red-800 text-sm">${c}</div></div>`; }
+                else if (/^[-•*]|\d+\./.test(b)) { flush(); const items=b.split('\n').map(l=>`<li class="ml-4">${l.replace(/^[-•*]|\d+\.\s*/,'')}</li>`).join(''); html+=`<ul class="list-disc pl-2 mb-4 text-sm text-gray-700 space-y-1">${items}</ul>`; }
+                else { flush(); if(b.length<50 && !b.includes('\n')) html+=`<h3 class="text-lg font-bold text-gray-800 mt-4 mb-2 border-b border-gray-200 pb-1">${b}</h3>`; else html+=`<p class="text-sm text-gray-700 leading-relaxed mb-3 text-justify indent-8">${b}</p>`; }
+            });
+            flush(); return html;
+        }
+
+        // --- Init ---
+        function init() { 
+            if (!loadAutoSave()) { addPage('cover'); addPage('content'); setPaperSize('square'); }
+            const g = document.getElementById('emoji-grid'); g.innerHTML = ''; 
+            for (const [category, list] of Object.entries(emojis)) { 
+                const header = document.createElement('div'); header.className = 'emoji-category'; header.textContent = category; g.appendChild(header);
+                list.forEach(e => { const b = document.createElement('div'); b.className = 'emoji-btn'; b.textContent = e; b.onclick = () => insertEmoji(e); g.appendChild(b); }); 
+            } 
+            saveState(); setPaperSize(currentPaperName);
+            window.addEventListener('resize', applyZoom);
+            document.addEventListener('input', (e) => { if(e.target.isContentEditable) triggerAutoSave(); });
+        }
+        
+        window.onload = init;
+    </script>
+</body>
+</html>
